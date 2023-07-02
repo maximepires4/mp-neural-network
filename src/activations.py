@@ -11,7 +11,7 @@ class Activation(Layer):
         self.input = input
         return self.activation(self.input)
 
-    def backward(self, output_gradient, learning_rate):
+    def backward(self, output_gradient):
         return np.multiply(output_gradient, self.activation_prime(self.input))
 
 
@@ -54,6 +54,6 @@ class Softmax(Layer):
         self.output = e / np.sum(e)
         return self.output
 
-    def backward(self, output_gradient, learning_rate):
+    def backward(self, output_gradient):
         n = np.size(self.output)
         return ((np.identity(n) - self.output.T) * self.output) @ output_gradient
