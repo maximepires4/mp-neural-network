@@ -33,14 +33,24 @@ class Paint(object):
         self.choose_size_button.grid(row=0, column=4)
         self.choose_size_button.set(self.DEFAULT_PEN_SIZE)
 
-        #self.c = Canvas(self.root, bg=self.DEFAULT_BACKGROUND, width=600, height=600)
-        self.c = Canvas(self.root, bg=self.DEFAULT_BACKGROUND, width=28, height=28)
-        self.c.grid(row=1, columnspan=5)
-        self.c.scale("all", 0, 0, 10, 10)
+        self.c = Canvas(self.root, bg=self.DEFAULT_BACKGROUND, width=600, height=600)
+        self.c.grid(row=1, rowspan=10, columnspan=5)
 
-        self.textvar = StringVar()
-        self.guess = Label(self.root, textvariable=self.textvar, font=("TkDefaultFont", 44))
-        self.guess.grid(row=2, columnspan=5)
+        self.labels = []
+        self.textvars = []
+
+        for i in range(10):
+            self.textvars.append([StringVar(), StringVar()])
+            self.labels.append((
+                Label(self.root, font=("TkDefaultFont", 30), fg='#888' if i != 0 else '#000', textvariable=self.textvars[i][0]),
+                Label(self.root, font=("TkDefaultFont", 30), fg='#888' if i != 0 else '#000', textvariable=self.textvars[i][1])
+            ))
+            self.labels[i][0].grid(row=1+i, column=6, padx=30)
+            self.labels[i][1].grid(row=1+i, column=7, padx=20)
+
+        #self.textvar = StringVar()
+        #self.guess = Label(self.root, textvariable=self.textvar, font=("TkDefaultFont", 44))
+        #self.guess.grid(row=2, columnspan=5)
 
         self.setup()
         self.root.mainloop()
@@ -88,7 +98,14 @@ class Paint(object):
         
         self.image_handler.update()
         prediction = self.neuralnet_handler.predict(self.image_handler.image)
-        self.textvar.set("Guess: " + str(prediction))
 
+        prediction_textvars = [[i, p[0]] for i, p in zip(range(10), prediction)]
+
+        count = 0
+        for item in reversed(sorted(prediction_textvars, key=lambda item: item[1])):
+            self.textvars[count][0].set(item[0])
+            self.textvars[count][1].set('{:,.2%}'.format(item[1]))
+            count += 1
+        
     def reset(self, event):
         self.old_x, self.old_y = None, None

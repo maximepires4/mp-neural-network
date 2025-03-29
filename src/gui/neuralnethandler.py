@@ -11,4 +11,4 @@ class NeuralNetHandler():
     
     def predict(self, image):
         img = np.array(image).reshape((784,1))
-        return np.argmax(self.model.predict(img))
+        return self.model.predict(img)
