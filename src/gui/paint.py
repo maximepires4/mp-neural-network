@@ -1,3 +1,6 @@
+# Credits to nikhilkumarsingh
+# https://gist.github.com/nikhilkumarsingh/85501ee2c3d8c0cfa9d1a27be5781f06
+
 from tkinter import *
 from tkinter.colorchooser import askcolor
 
