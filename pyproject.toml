@@ -1,0 +1,28 @@
+[build-system]
+requires = ["hatchling >= 1.26"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mpneuralnetwork"
+version = "2024.0.0a1"
+dependencies = [
+  "numpy>=2.2.4",
+  "scipy>=1.15.2",
+]
+authors = [
+  { name="Maxime Pires", email="maximepires4@gmail.com" },
+]
+description = "A small python library for neural networks"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Programming Language :: Python :: 3",
+  "Operating System :: OS Independent",
+]
+license = "MIT"
+license-files = ["LICEN[CS]E*"]
+
+[project.urls]
+Homepage = "https://github.com/maximepires4/mp-neural-network"
+Issues = "https://github.com/maximepires4/mp-neural-network/issues"
