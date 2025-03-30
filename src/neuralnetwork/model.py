@@ -17,6 +17,8 @@ class Model:
 
         for epoch in range(epochs):
             error = 0
+            accuracy = 0
+            count = 0
             input_copy, output_copy = utils.shuffle(input_copy, output_copy)
 
             for batch in range(batches):
@@ -39,6 +41,8 @@ class Model:
                         y_hat = layer.forward(y_hat)
 
                     error += self.loss.direct(y, y_hat)
+                    accuracy += 1 if np.argmax(y_hat) == np.argmax(y) else 0
+                    count += 1
 
                     grad = self.loss.prime(y, y_hat)
                     for layer in reversed(self.layers):
@@ -50,7 +54,7 @@ class Model:
                 for layer in self.layers:
                     layer.update(learning_rate, batch_size)
 
-                msg = 'epoch %d/%d   batch %d/%d   error=%f' % (epoch + 1, epochs, batch+1, batches, error / len(input_copy[batch*batch_size:(batch+1)*batch_size]))
+                msg = 'epoch %d/%d   batch %d/%d   error=%f   accuracy=%.2f' % (epoch + 1, epochs, batch+1, batches, error / len(input_copy[batch*batch_size:(batch+1)*batch_size]), 100 * accuracy / count)
 
                 if batch == batches - 1:
                     print(msg)
@@ -62,15 +66,20 @@ class Model:
 
     def test(self, input, output):
         error = 0
+        accuracy = 0
+
         for x, y in zip(input, output):
             y_hat = x
             for layer in self.layers:
                 y_hat = layer.forward(y_hat)
-
+            
+            accuracy += 1 if np.argmax(y_hat) == np.argmax(y) else 0
             error += self.loss.direct(y, y_hat)
 
-        error /= len(input)
-        print('error=%f' % error)
+        len_input = len(input)
+        error /= len_input
+        accuracy /= len_input
+        print('error=%f | accuracy=%.2f' % (error, accuracy*100))
 
     def predict(self, input):
         output = np.copy(input)
