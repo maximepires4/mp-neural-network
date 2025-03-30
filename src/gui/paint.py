@@ -33,7 +33,7 @@ class Paint(object):
         self.choose_size_button.grid(row=0, column=4)
         self.choose_size_button.set(self.DEFAULT_PEN_SIZE)
 
-        self.c = Canvas(self.root, bg=self.DEFAULT_BACKGROUND, width=600, height=600)
+        self.c = Canvas(self.root, bg=self.DEFAULT_BACKGROUND, width=600, height=600, highlightthickness=0)
         self.c.grid(row=1, rowspan=10, columnspan=5)
 
         self.labels = []
