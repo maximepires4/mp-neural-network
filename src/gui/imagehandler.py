@@ -1,4 +1,4 @@
-from PIL import ImageGrab, ImageFilter, Image
+from PIL import ImageGrab, Image
 from pathlib import Path
 import numpy as np
 
@@ -25,9 +25,13 @@ class ImageHandler():
         base_img_data = np.asarray(base_img)
         non_empty_columns = np.where(base_img_data.max(axis=0)>0)[0]
         non_empty_rows = np.where(base_img_data.max(axis=1)>0)[0]
-        cropBox = (min(non_empty_rows), max(non_empty_rows), min(non_empty_columns), max(non_empty_columns))
+        cropBox = (min(non_empty_rows, default=0), max(non_empty_rows, default=0), min(non_empty_columns, default=0), max(non_empty_columns, default=0))
         base_img_data_cropped = base_img_data[cropBox[0]:cropBox[1]+1, cropBox[2]:cropBox[3]+1]
         cropped_img = Image.fromarray(base_img_data_cropped)
+
+        if cropped_img.size[0] <= 1 and cropped_img.size[1] <= 1:
+            self.image = Image.new('L', (28, 28))
+            return
 
         # Resizing image to (20, 20) while keeping aspect ratio
         percent = min(20 / float(cropped_img.size[0]), 20 / float(cropped_img.size[1]))
@@ -49,4 +53,3 @@ class ImageHandler():
     def save(self):
         Path("output").mkdir(parents=True, exist_ok=True)
         self.image.save("output/image.jpg", quality=100)
-        self.new_image.save('output/new_image.jpg', quality=100)
