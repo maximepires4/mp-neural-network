@@ -1,33 +1,36 @@
-# FFNN + Handwriting recognition
+# MPNeuralNetwork
 
 Custom library for implementing feedforward neural networks using back propagation.
-This library is then used for handwriting recognition with a gui (MNIST database).
 I recreated the algorithm from scratch, without using any external library, to fully understand the process.
+
+## Features
+
+This library provides functions to create and run neural networks.
+
+* Layers : Dense
+* Activations : Tanh, Sigmoid, ReLU, PReLU, Softmax
+* Losses : MSE
 
 ## Usage
 
-### Create a model
+Create a network using layers and activations classes. Example:
 
-Create, train and save a model inside `output/model.pkl`.
-
-```bash
-python3 create_model.py
+```python3
+network = [Dense(784, 128), Tanh(), Dense(128, 40), Tanh(), Dense(40, 10), Softmax()]
 ```
 
-To modify the model, edit the variable `netword` inside `create_model.py`
+Create a model using the network previously created and a loss class. Example:
 
-### Test the model
-
-Launch a gui for manually testing the model
-
-```bash
-python3 main.py
+```python3
+model = Model(network, MSE())
 ```
 
-## Requirements
+Train the model by setting some parameters. Example:
 
-* tkinter : `sudo apt install python3-tk`
+```python3
+model.train(input, output, epochs=10, learning_rate=0.1, batch_size=10)
+```
 
-## Credits
+## Example
 
-User [nikhilkumarsingh](https://github.com/nikhilkumarsingh) for the gui [base code](https://gist.github.com/nikhilkumarsingh/85501ee2c3d8c0cfa9d1a27be5781f06).
+See my [handwriting recognition repository](https://github.com/maximepires4/handwriting-recognition).
