@@ -22,10 +22,10 @@ class Tanh(Activation):
 
 class Sigmoid(Activation):
     def __init__(self):
+        def sigmoid(x):
+            return 1 / (1 + np.exp(-x))
 
-        sigmoid = (lambda x: 1 / (1 + np.exp(-x)))
-
-        super().__init__(sigmoid, sigmoid * (1 - sigmoid))
+        super().__init__(lambda x: sigmoid(x), lambda x: sigmoid(x) * (1 - sigmoid(x)))
 
 
 class ReLU(Activation):
@@ -35,13 +35,17 @@ class ReLU(Activation):
 
 class PReLU(Activation):
     def __init__(self, alpha=0.01):
-        super().__init__(lambda x: np.maximum(alpha * x, x), lambda x: alpha if x < 0 else 1)
+        super().__init__(
+            lambda x: np.maximum(alpha * x, x), lambda x: alpha if x < 0 else 1
+        )
 
 
 class Swish(Activation):
     def __init__(self):
-        super().__init__(lambda x: x / (1 + np.exp(-x)),
-                         lambda x: (1 + np.exp(-x) + x * np.exp(-x)) / (1 + np.exp(-x)) ** 2)
+        super().__init__(
+            lambda x: x / (1 + np.exp(-x)),
+            lambda x: (1 + np.exp(-x) + x * np.exp(-x)) / (1 + np.exp(-x)) ** 2,
+        )
 
 
 class Softmax(Layer):

@@ -35,11 +35,8 @@ class Dense(Layer):
         return output
 
     def backward(self, output_gradient):
-        #self.weights_gradient += output_gradient @ self.input.T
         self.weights_gradient += output_gradient @ self.input.T
         self.output_gradient += output_gradient
-        #self.weights -= 0.1 * output_gradient @ self.input.T
-        #self.biases -= 0.1 * output_gradient
 
         return self.weights.T @ output_gradient  # input_gradient
 
