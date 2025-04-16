@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mpneuralnetwork"
-version = "2024.0.0a1"
+version = "2025.1.0a1"
 dependencies = [
   "numpy>=2.2.4",
   "scipy>=1.15.2",
