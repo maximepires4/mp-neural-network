@@ -5,7 +5,7 @@ import dill as pickle
 from pathlib import Path
 
 from mpneuralnetwork.activations import Tanh, Sigmoid, Softmax, ReLU, PReLU, Swish
-from mpneuralnetwork.losses import CrossEntropy
+from mpneuralnetwork.losses import MSE, CrossEntropy
 from mpneuralnetwork.layers import Dense
 from mpneuralnetwork.model import Model
 
