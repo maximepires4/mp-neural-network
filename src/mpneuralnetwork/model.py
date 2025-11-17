@@ -48,8 +48,7 @@ class Model:
                     epochs,
                     batch + 1,
                     batches,
-                    error
-                    / len(input_copy[batch * batch_size : (batch + 1) * batch_size]),
+                    error / count, 
                     100 * accuracy / count,
                 )
 
