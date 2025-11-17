@@ -21,3 +21,10 @@ class MSE(Loss):
     def prime(self, output, output_expected):
         return 2 * (output_expected - output) / output.size
 
+class CrossEntropy(Loss):
+    def direct(self, output, output_expected):
+        epsilon = 1e-9
+        return np.mean(-output_expected * np.log(output + epsilon))
+
+    def prime(self, output, output_expected):
+        return (output_expected - output) / output.size

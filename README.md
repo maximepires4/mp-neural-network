@@ -9,7 +9,7 @@ This library provides functions to create and run neural networks.
 
 * Layers : Dense
 * Activations : Tanh, Sigmoid, ReLU, PReLU, Softmax
-* Losses : MSE
+* Losses : MSE, Cross-Entropy
 
 ## Usage
 
