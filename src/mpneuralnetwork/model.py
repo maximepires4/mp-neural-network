@@ -1,5 +1,7 @@
 import numpy as np
-from .losses import MSE
+
+from .activations import Softmax
+from .losses import MSE, CategoricalCrossEntropy
 from .optimizers import SGD
 
 
@@ -85,5 +87,8 @@ class Model:
         output = np.copy(input)
         for layer in self.layers:
             output = layer.forward(output)
+        
+        if isinstance(self.loss, CategoricalCrossEntropy):
+            output = Softmax().forward(output)
 
         return output
