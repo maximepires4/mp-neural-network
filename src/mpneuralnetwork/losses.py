@@ -12,7 +12,7 @@ class Loss:
 
 class MSE(Loss):
     def direct(self, output, output_expected):
-        return np.mean(np.power(output_expected - output, 2))
+        return np.mean(np.sum(np.power(output_expected - output, 2), axis=1))
 
     def prime(self, output, output_expected):
         return 2 * (output - output_expected) / output.shape[0]
@@ -23,11 +23,12 @@ class BinaryCrossEntropy(Loss):
         return 1 / (1 + np.exp(-x))
 
     def direct(self, output, output_expected):
-        return np.mean(
+        loss_per_element = (
             np.maximum(output, 0)
             - output * output_expected
             + np.log(1 + np.exp(-np.abs(output)))
         )
+        return np.mean(np.sum(loss_per_element, axis=1))
 
     def prime(self, output, output_expected):
         predictions = self._sigmoid(output)

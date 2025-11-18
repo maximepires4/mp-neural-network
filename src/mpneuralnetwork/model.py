@@ -1,7 +1,5 @@
 import numpy as np
-from . import utils
-from .activations import Softmax, Sigmoid
-from .losses import MSE, CategoricalCrossEntropy, BinaryCrossEntropy
+from .losses import MSE
 from .optimizers import SGD
 
 

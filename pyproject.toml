@@ -4,10 +4,10 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mpneuralnetwork"
-version = "2025.1.1a1"
+version = "2025.1.0a5"
 dependencies = [
-  "numpy>=2.2.4",
-  "scipy>=1.15.2",
+  "numpy>=1.21",
+  "scipy>=1.10",
 ]
 authors = [
   { name="Maxime Pires", email="maximepires4@gmail.com" },
@@ -26,3 +26,16 @@ license-files = ["LICEN[CS]E*"]
 [project.urls]
 Homepage = "https://github.com/maximepires4/mp-neural-network"
 Issues = "https://github.com/maximepires4/mp-neural-network/issues"
+
+[project.optional-dependencies]
+test = [
+  "pytest",
+]
+build = [
+  "build",
+  "twine",
+]
+examples = [
+  "dill",
+  "pillow",
+]
