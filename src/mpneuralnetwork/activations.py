@@ -36,7 +36,7 @@ class ReLU(Activation):
 class PReLU(Activation):
     def __init__(self, alpha=0.01):
         super().__init__(
-            lambda x: np.maximum(alpha * x, x), lambda x: alpha if x < 0 else 1
+            lambda x: np.maximum(alpha * x, x), lambda x: np.where(x < 0, alpha, 1)
         )
 
 
