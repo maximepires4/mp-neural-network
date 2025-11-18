@@ -6,125 +6,86 @@ from .optimizers import SGD
 
 
 class Model:
-    def __init__(self, layers, loss, optimizer = SGD(), task_type=None):
+    def __init__(self, layers, loss, optimizer=SGD()):
         self.layers = layers
         self.loss = loss
         self.optimizer = optimizer
 
-        self.output_activation = None
-        self.task_type = task_type
+        if isinstance(loss, MSE):
+            self.task_type = "regression"
+        else:
+            self.task_type = "classification"
 
-        if self.task_type is None:
-            if isinstance(loss, MSE):
-                self.task_type = "regression"
-            if isinstance(loss, CategoricalCrossEntropy):
-                self.output_activation = Softmax()
-                self.task_type = "categorical"
-            elif isinstance(loss, BinaryCrossEntropy):
-                self.output_activation = Sigmoid()
-                self.task_type = "binary"
-
-    def train(self, input, output, epochs, batch_size):
-        input_copy = np.copy(input)
-        output_copy = np.copy(output)
-
-        batches = np.floor(input_copy.shape[0] / batch_size).astype(int)
+    def train(self, X_train, y_train, epochs, batch_size):
+        num_samples = X_train.shape[0]
+        num_batches = int(np.floor(num_samples / batch_size))
 
         for epoch in range(epochs):
             error = 0
             accuracy = 0 if self.task_type != "regression" else None
-            count = 0
-            input_copy, output_copy = utils.shuffle(input_copy, output_copy)
 
-            for batch in range(batches):
-                self.optimizer.zero_grad(self.layers)
+            permutation = np.random.permutation(num_samples)
+            X_shuffled = X_train[permutation]
+            y_shuffled = y_train[permutation]
 
-                for x, y in zip(
-                    input_copy[batch * batch_size : (batch + 1) * batch_size],
-                    output_copy[batch * batch_size : (batch + 1) * batch_size],
-                ):
-                    y_hat = x
+            for i in range(num_batches):
+                start = i * batch_size
+                end = (i + 1) * batch_size
+                X_batch = X_shuffled[start:end]
+                y_batch = y_shuffled[start:end]
 
-                    for layer in self.layers:
-                        y_hat = layer.forward(y_hat)
+                predictions = X_batch
+                for layer in self.layers:
+                    predictions = layer.forward(predictions)
 
-                    error += self.loss.direct(y_hat, y)
+                error += self.loss.direct(predictions, y_batch)
 
-                    if self.task_type == "categorical":
-                        assert accuracy is not None
-                        accuracy += 1 if np.argmax(y_hat) == np.argmax(y) else 0
-                    elif self.task_type == "binary":
-                        assert accuracy is not None
-                        pred_label = 1 if y_hat > 0 else 0
-                        accuracy += 1 if pred_label == y else 0
+                if accuracy is not None:
+                    if y_batch.ndim == 2 and y_batch.shape[1] > 1:
+                        correct_predictions = np.sum(
+                            np.argmax(predictions, axis=1) == np.argmax(y_batch, axis=1)
+                        )
+                        accuracy += correct_predictions
+                    elif y_batch.ndim == 1:
+                        pred_labels = (predictions > 0.5).astype(int)
+                        accuracy += np.sum(pred_labels == y_batch)
 
-                    count += 1
+                grad = self.loss.prime(predictions, y_batch)
 
-                    grad = self.loss.prime(y_hat, y)
-                    for layer in reversed(self.layers):
-                        grad = layer.backward(grad)
+                for layer in reversed(self.layers):
+                    grad = layer.backward(grad)
 
-                self.optimizer.step(self.layers, batch_size)
+                self.optimizer.step(self.layers)
 
-                if accuracy is None:
-                    msg = "epoch %d/%d   batch %d/%d   error=%f" % (
-                        epoch + 1,
-                        epochs,
-                        batch + 1,
-                        batches,
-                        error / count,
-                    )
-                else:
-                    msg = "epoch %d/%d   batch %d/%d   error=%f   accuracy=%.2f" % (
-                        epoch + 1,
-                        epochs,
-                        batch + 1,
-                        batches,
-                        error / count,
-                        100 * accuracy / count,
-                    )
+            error /= num_batches
 
-                if batch == batches - 1:
-                    print(msg)
-                else:
-                    print(msg, end="\r")
+            if accuracy is not None:
+                total_samples = num_batches * batch_size
+                accuracy /= total_samples
+                print(f"Epoch {epoch + 1}/{epochs}      error={error:.4f}       accuracy={accuracy*100:.2f}%")
+            else:
+                print(f"Epoch {epoch + 1}/{epochs}      error={error:.4f}")
 
-            error /= len(input_copy)
+    def test(self, X_test, y_test):
+        predictions = self.predict(X_test)
+        error = self.loss.direct(predictions, y_test)
 
-    def test(self, input, output):
-        error = 0
-        accuracy = 0 if self.task_type != 'regression' else None
-
-        for x, y in zip(input, output):
-            y_hat = x
-            for layer in self.layers:
-                y_hat = layer.forward(y_hat)
-
-            if self.task_type == "categorical":
-                assert accuracy is not None
-                accuracy += 1 if np.argmax(y_hat) == np.argmax(y) else 0
-            elif self.task_type == "binary":
-                assert accuracy is not None
-                pred_label = 1 if y_hat > 0 else 0
-                accuracy += 1 if pred_label == y else 0
-
-            error += self.loss.direct(y_hat, y)
-
-        len_input = len(input)
-        error /= len_input
+        accuracy = None
+        if self.task_type != "regression":
+            if y_test.ndim == 2 and y_test.shape[1] > 1:
+                accuracy = np.sum(np.argmax(predictions, axis=1) == np.argmax(y_test, axis=1)) / y_test.shape[0]
+            elif y_test.ndim == 1:
+                pred_labels = (predictions > 0.5).astype(int)
+                accuracy = np.sum(pred_labels == y_test) / y_test.shape[0]
 
         if accuracy is not None:
-            accuracy /= len_input
-            print("error=%f | accuracy=%.2f" % (error, accuracy * 100))
+            print(f"Test Error: {error:.4f}, Test Accuracy: {accuracy*100:.2f}%")
         else:
-            print("error=%f" % error)
+            print(f"Test Error: {error:.4f}")
 
     def predict(self, input):
         output = np.copy(input)
         for layer in self.layers:
             output = layer.forward(output)
-
-        if self.output_activation:
-            output = self.output_activation.forward(output)
 
         return output

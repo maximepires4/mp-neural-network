@@ -25,8 +25,8 @@ output = np.zeros((training_data[1].shape[0], 10))
 for i in range(training_data[1].shape[0]):
     output[i, training_data[1][i]] = 1
 
-input = input.reshape((50000, 784, 1))
-output = output.reshape((50000, 10, 1))
+input = input.reshape((50000, 784))
+output = output.reshape((50000, 10))
 
 network = [Dense(784, 128), Tanh(), Dense(128, 40), Tanh(), Dense(40, 10)]
 

@@ -7,12 +7,14 @@ class Activation(Layer):
         self.activation = activation
         self.activation_prime = activation_prime
 
-    def forward(self, input):
-        self.input = input
+    def forward(self, input_batch):
+        self.input = input_batch
         return self.activation(self.input)
 
-    def backward(self, output_gradient):
-        return np.multiply(output_gradient, self.activation_prime(self.input))
+    def backward(self, output_gradient_batch):
+        return np.multiply(
+            output_gradient_batch, self.activation_prime(self.input)
+        )
 
 
 class Tanh(Activation):
@@ -52,12 +54,15 @@ class Softmax(Layer):
     def __init__(self):
         pass
 
-    def forward(self, input):
-        m = np.max(input)
-        e = np.exp(input - m)
-        self.output = e / np.sum(e)
+    def forward(self, input_batch):
+        m = np.max(input_batch, axis=1, keepdims=True)
+        e = np.exp(input_batch - m)
+        self.output = e / np.sum(e, axis=1, keepdims=True)
         return self.output
 
-    def backward(self, output_gradient):
-        n = np.size(self.output)
-        return ((np.identity(n) - self.output.T) * self.output) @ output_gradient
+    def backward(self, output_gradient_batch):
+        sum_s_times_g = np.sum(
+            self.output * output_gradient_batch, axis=1, keepdims=True
+        )
+
+        return self.output * (output_gradient_batch - sum_s_times_g)

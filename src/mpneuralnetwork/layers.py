@@ -7,37 +7,30 @@ class Layer:
         self.input = None
         self.output = None
 
-    def forward(self, input):
+    def forward(self, input_batch):
         pass
 
-    def backward(self, output_gradient):
-        pass
-
-    def clear_gradients(self):
+    def backward(self, output_gradient_batch):
         pass
 
 
 class Dense(Layer):
     def __init__(self, input_size, output_size):
-        self.weights = np.random.randn(output_size, input_size)
-        self.biases = np.random.randn(output_size, 1)
-        self.weights_gradient = np.zeros((output_size, input_size))
-        self.biases_gradient = np.zeros((output_size, 1))
+        self.weights = np.random.randn(input_size, output_size)
+        self.biases = np.random.randn(1, output_size)
 
-    def forward(self, input):
-        self.input = input
-        output = self.weights @ self.input + self.biases
-        return output
+        self.weights_gradient = np.zeros_like(self.weights)
+        self.biases_gradient = np.zeros_like(self.biases)
 
-    def backward(self, output_gradient):
-        self.weights_gradient += output_gradient @ self.input.T
-        self.biases_gradient += output_gradient
+    def forward(self, input_batch):
+        self.input = input_batch
+        return self.input @ self.weights + self.biases
 
-        return self.weights.T @ output_gradient  # input_gradient
+    def backward(self, output_gradient_batch):
+        self.weights_gradient = self.input.T @ output_gradient_batch
+        self.biases_gradient = np.sum(output_gradient_batch, axis=0, keepdims=True)
 
-    def clear_gradients(self):
-        self.weights_gradient[:] = 0
-        self.biases_gradient[:] = 0
+        return output_gradient_batch @ self.weights.T
 
 
 class Convolutional(Layer):
@@ -57,8 +50,13 @@ class Convolutional(Layer):
         self.kernels_gradient = np.zeros(self.kernels_shape)
         self.biases_gradient = np.zeros(self.output_shape)
 
-    def forward(self, input):
-        self.input = input
+    def forward(self, input_batch):
+        # TODO: Need to vectorize this part. For now, only works for batch_size = 1
+        assert input_batch.ndim == 3, (
+            f"Non-vectorized Convolutional layer received a batch of size > 1 (shape={input_batch.shape})"
+        )
+
+        self.input = input_batch
         output = np.copy(self.biases)
         for i in range(self.depth):
             for j in range(self.input_depth):
@@ -67,24 +65,27 @@ class Convolutional(Layer):
                 )
         return output
 
-    def backward(self, output_gradient):
-        self.biases_gradient += output_gradient
+    def backward(self, output_gradient_batch):
+        # TODO: Need to vectorize this part. For now, only works for batch_size = 1
+        assert output_gradient_batch.ndim == 3, (
+            f"Non-vectorized Convolutional layer received a batch of size > 1 (shape={output_gradient_batch.shape})"
+        )
+
+        self.kernels_gradient = np.zeros(self.kernels_shape)
+        self.biases_gradient = output_gradient_batch
+
         input_gradient = np.zeros(self.input_shape)
 
         for i in range(self.depth):
             for j in range(self.input_depth):
-                self.kernels_gradient[i][j] += signal.correlate2d(
-                    self.input[j], output_gradient[i], "valid"
+                self.kernels_gradient[i][j] = signal.correlate2d(
+                    self.input[j], output_gradient_batch[i], "valid"
                 )
                 input_gradient[j] += signal.convolve2d(
-                    output_gradient[i], self.kernels[i][j], "full"
+                    output_gradient_batch[i], self.kernels[i][j], "full"
                 )
 
         return input_gradient
-
-    def clear_gradients(self):
-        self.kernels_gradient[:] = 0
-        self.biases_gradient[:] = 0
 
 
 class Reshape(Layer):
@@ -92,8 +93,10 @@ class Reshape(Layer):
         self.input_shape = input_shape
         self.output_shape = output_shape
 
-    def forward(self, input):
-        return np.reshape(input, self.output_shape)
+    def forward(self, input_batch):
+        batch_size = input_batch.shape[-1]
+        return np.reshape(input_batch, (*self.output_shape, batch_size))
 
-    def backward(self, output_gradient):
-        return np.reshape(output_gradient, self.input_shape)
+    def backward(self, output_gradient_batch):
+        batch_size = output_gradient_batch.shape[-1]
+        return np.reshape(output_gradient_batch, (*self.input_shape, batch_size))

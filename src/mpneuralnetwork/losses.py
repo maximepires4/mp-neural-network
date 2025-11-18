@@ -15,30 +15,37 @@ class MSE(Loss):
         return np.mean(np.power(output_expected - output, 2))
 
     def prime(self, output, output_expected):
-        return 2 * (output_expected - output) / output.size
+        return 2 * (output - output_expected) / output.shape[0]
+
 
 class BinaryCrossEntropy(Loss):
     def _sigmoid(self, x):
         return 1 / (1 + np.exp(-x))
 
     def direct(self, output, output_expected):
-        return np.mean(np.maximum(output_expected, 0) - output_expected * output + np.log(1 + np.exp(-np.abs(output_expected))))
+        return np.mean(
+            np.maximum(output, 0)
+            - output * output_expected
+            + np.log(1 + np.exp(-np.abs(output)))
+        )
 
     def prime(self, output, output_expected):
-        return (self._sigmoid(output_expected) - output) / output.size
+        predictions = self._sigmoid(output)
+        return (predictions - output_expected) / output.shape[0]
+
 
 class CategoricalCrossEntropy(Loss):
     def _softmax(self, x):
-        m = np.max(x)
+        m = np.max(x, axis=1, keepdims=True)
         e = np.exp(x - m)
-        self.output = e / np.sum(e)
+        self.output = e / np.sum(e, axis=1, keepdims=True)
         return self.output
 
     def direct(self, output, output_expected):
         epsilon = 1e-9
         predictions = self._softmax(output)
-        return -np.sum(output_expected * np.log(predictions + epsilon)) 
+        return np.mean(-np.sum(output_expected * np.log(predictions + epsilon), axis=1))
 
     def prime(self, output, output_expected):
         predictions = self._softmax(output)
-        return predictions - output_expected
+        return (predictions - output_expected) / output.shape[0]
