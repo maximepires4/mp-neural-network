@@ -3,10 +3,6 @@ from .layers import Layer
 
 
 class Loss:
-    def __init__(self):
-        self.output = None
-        self.output_expected = None
-
     def direct(self, output, output_expected):
         pass
 
@@ -21,10 +17,28 @@ class MSE(Loss):
     def prime(self, output, output_expected):
         return 2 * (output_expected - output) / output.size
 
-class CrossEntropy(Loss):
+class BinaryCrossEntropy(Loss):
+    def _sigmoid(self, x):
+        return 1 / (1 + np.exp(-x))
+
     def direct(self, output, output_expected):
-        epsilon = 1e-9
-        return -np.sum(output_expected * np.log(output + epsilon))
+        return np.mean(np.maximum(output_expected, 0) - output_expected * output + np.log(1 + np.exp(-np.abs(output_expected))))
 
     def prime(self, output, output_expected):
-        return output_expected - output
+        return (self._sigmoid(output_expected) - output) / output.size
+
+class CategoricalCrossEntropy(Loss):
+    def _softmax(self, x):
+        m = np.max(x)
+        e = np.exp(x - m)
+        self.output = e / np.sum(e)
+        return self.output
+
+    def direct(self, output, output_expected):
+        epsilon = 1e-9
+        predictions = self._softmax(output)
+        return -np.sum(output_expected * np.log(predictions + epsilon)) / output.size
+
+    def prime(self, output, output_expected):
+        predictions = self._softmax(output)
+        return (predictions - output) / output.size
