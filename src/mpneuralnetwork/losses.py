@@ -37,8 +37,8 @@ class CategoricalCrossEntropy(Loss):
     def direct(self, output, output_expected):
         epsilon = 1e-9
         predictions = self._softmax(output)
-        return -np.sum(output_expected * np.log(predictions + epsilon)) / output.size
+        return -np.sum(output_expected * np.log(predictions + epsilon)) 
 
     def prime(self, output, output_expected):
         predictions = self._softmax(output)
-        return (predictions - output) / output.size
+        return predictions - output_expected

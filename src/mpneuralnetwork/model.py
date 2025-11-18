@@ -47,7 +47,7 @@ class Model:
                     for layer in self.layers:
                         y_hat = layer.forward(y_hat)
 
-                    error += self.loss.direct(y, y_hat)
+                    error += self.loss.direct(y_hat, y)
 
                     if self.task_type == "categorical":
                         assert accuracy is not None
@@ -59,7 +59,7 @@ class Model:
 
                     count += 1
 
-                    grad = self.loss.prime(y, y_hat)
+                    grad = self.loss.prime(y_hat, y)
                     for layer in reversed(self.layers):
                         grad = layer.backward(grad)
 
@@ -108,7 +108,7 @@ class Model:
                 pred_label = 1 if y_hat > 0 else 0
                 accuracy += 1 if pred_label == y else 0
 
-            error += self.loss.direct(y, y_hat)
+            error += self.loss.direct(y_hat, y)
 
         len_input = len(input)
         error /= len_input
