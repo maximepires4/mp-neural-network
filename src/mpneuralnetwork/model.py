@@ -2,12 +2,14 @@ import numpy as np
 from . import utils
 from .activations import Softmax, Sigmoid
 from .losses import MSE, CategoricalCrossEntropy, BinaryCrossEntropy
+from .optimizers import SGD
 
 
 class Model:
-    def __init__(self, layers, loss, task_type=None):
+    def __init__(self, layers, loss, optimizer = SGD(), task_type=None):
         self.layers = layers
         self.loss = loss
+        self.optimizer = optimizer
 
         self.output_activation = None
         self.task_type = task_type
@@ -22,7 +24,7 @@ class Model:
                 self.output_activation = Sigmoid()
                 self.task_type = "binary"
 
-    def train(self, input, output, epochs, learning_rate, batch_size):
+    def train(self, input, output, epochs, batch_size):
         input_copy = np.copy(input)
         output_copy = np.copy(output)
 
@@ -35,8 +37,7 @@ class Model:
             input_copy, output_copy = utils.shuffle(input_copy, output_copy)
 
             for batch in range(batches):
-                for layer in self.layers:
-                    layer.clear_gradients()
+                self.optimizer.zero_grad(self.layers)
 
                 for x, y in zip(
                     input_copy[batch * batch_size : (batch + 1) * batch_size],
@@ -63,8 +64,7 @@ class Model:
                     for layer in reversed(self.layers):
                         grad = layer.backward(grad)
 
-                for layer in self.layers:
-                    layer.update(learning_rate, batch_size)
+                self.optimizer.step(self.layers, batch_size)
 
                 if accuracy is None:
                     msg = "epoch %d/%d   batch %d/%d   error=%f" % (

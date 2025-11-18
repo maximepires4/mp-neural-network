@@ -32,7 +32,7 @@ network = [Dense(784, 128), Tanh(), Dense(128, 40), Tanh(), Dense(40, 10)]
 
 model = Model(network, CategoricalCrossEntropy())
 
-model.train(input, output, epochs=10, learning_rate=0.1, batch_size=10)
+model.train(input, output, epochs=10, batch_size=10)
 
 Path("output/").mkdir(parents=True, exist_ok=True)
 
