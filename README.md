@@ -37,7 +37,7 @@ This library handles numerical stability and batch processing.
 | **Layers** | `Dense` (Fully Connected), `Input`, `Reshape` |
 | **Activations** | `ReLU`, `LeakyReLU`, `Sigmoid`, `Tanh`, `Softmax`, `PReLU` |
 | **Loss Functions** | `MSE` (Mean Squared Error), `BinaryCrossEntropy`, `CategoricalCrossEntropy` (Logits optimized) |
-| **Optimizers** | `SGD` (Stochastic Gradient Descent) |
+| **Optimizers** | `SGD` (Stochastic Gradient Descent), `SGDMomentum`, `RMSprop`, `Adam` |
 
 ## Installation
 
@@ -117,9 +117,9 @@ This architecture allows swapping `SGD` for `Adam` or `RMSprop` without changing
 
   * [x] **Batch Vectorization**
   * [x] **Numerical Stability Fixes (Logits)**
+  * [x] **Advanced Optimizers:** Adam, RMSprop.
   * [ ] **Keras-like API:** Transitioning to `model.compile()` and `model.fit()` syntax for better standardisation.
   * [ ] **Convolutional Layers (CNN):** Implementation of `im2col` algorithm for efficient convolution.
-  * [ ] **Advanced Optimizers:** Adam, RMSprop.
   * [ ] **Model Serialization:** Saving/Loading weights.
 
 ## Author
