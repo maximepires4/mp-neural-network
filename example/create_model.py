@@ -1,3 +1,5 @@
+import random
+
 import gzip
 import numpy as np
 
@@ -17,6 +19,10 @@ def load_data():
         return (training_data, validation_data, test_data)
 
 
+seed = 69
+np.random.seed(seed)
+random.seed(seed)
+
 training_data, validation_data, test_data = load_data()
 
 input = training_data[0]
@@ -24,9 +30,6 @@ input = training_data[0]
 output = np.zeros((training_data[1].shape[0], 10))
 for i in range(training_data[1].shape[0]):
     output[i, training_data[1][i]] = 1
-
-input = input.reshape((50000, 784))
-output = output.reshape((50000, 10))
 
 network = [Dense(784, 128), Tanh(), Dense(128, 40), Tanh(), Dense(40, 10)]
 
