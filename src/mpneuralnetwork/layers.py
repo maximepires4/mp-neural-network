@@ -7,7 +7,7 @@ class Layer:
         self.input = None
         self.output = None
 
-    def forward(self, input_batch):
+    def forward(self, input_batch, training=True):
         pass
 
     def backward(self, output_gradient_batch):
@@ -30,7 +30,7 @@ class Dense(Layer):
         self.weights_gradient = np.zeros_like(self.weights)
         self.biases_gradient = np.zeros_like(self.biases)
 
-    def forward(self, input_batch):
+    def forward(self, input_batch, training=True):
         self.input = input_batch
         return self.input @ self.weights + self.biases
 
@@ -40,6 +40,21 @@ class Dense(Layer):
 
         return output_gradient_batch @ self.weights.T
 
+class Dropout(Layer):
+    def __init__(self, probability=0.5):
+        self.probability = probability
+        self.mask = None
+
+    def forward(self, input_batch, training=True):
+        if not training:
+            return input_batch
+
+        self.mask = np.random.binomial(1, 1 - self.probability, size=input_batch.shape) / (1 - self.probability)
+
+        return input_batch * self.mask
+
+    def backward(self, output_gradient_batch):
+        return output_gradient_batch * self.mask
 
 class Convolutional(Layer):
     def __init__(self, input_shape, kernel_size, depth):
@@ -58,7 +73,7 @@ class Convolutional(Layer):
         self.kernels_gradient = np.zeros(self.kernels_shape)
         self.biases_gradient = np.zeros(self.output_shape)
 
-    def forward(self, input_batch):
+    def forward(self, input_batch, training=True):
         # TODO: Need to vectorize this part. For now, only works for batch_size = 1
         assert input_batch.ndim == 3, (
             f"Non-vectorized Convolutional layer received a batch of size > 1 (shape={input_batch.shape})"

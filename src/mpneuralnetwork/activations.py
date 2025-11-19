@@ -7,7 +7,7 @@ class Activation(Layer):
         self.activation = activation
         self.activation_prime = activation_prime
 
-    def forward(self, input_batch):
+    def forward(self, input_batch, training=True):
         self.input = input_batch
         return self.activation(self.input)
 
@@ -54,7 +54,7 @@ class Softmax(Layer):
     def __init__(self):
         pass
 
-    def forward(self, input_batch):
+    def forward(self, input_batch, training=True):
         m = np.max(input_batch, axis=1, keepdims=True)
         e = np.exp(input_batch - m)
         self.output = e / np.sum(e, axis=1, keepdims=True)

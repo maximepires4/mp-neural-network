@@ -86,7 +86,7 @@ class Model:
     def predict(self, input):
         output = np.copy(input)
         for layer in self.layers:
-            output = layer.forward(output)
+            output = layer.forward(output, training=False)
         
         if isinstance(self.loss, CategoricalCrossEntropy):
             output = Softmax().forward(output)
