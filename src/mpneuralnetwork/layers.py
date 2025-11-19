@@ -15,8 +15,16 @@ class Layer:
 
 
 class Dense(Layer):
-    def __init__(self, input_size, output_size):
-        self.weights = np.random.randn(input_size, output_size)
+    def __init__(self, input_size, output_size, initialization=None):
+
+        std_dev = 0.1
+
+        if initialization == 'he':
+            std_dev = np.sqrt(2.0 / input_size)
+        elif initialization == 'xavier':
+            std_dev = np.sqrt(1.0 / input_size)
+
+        self.weights = np.random.randn(input_size, output_size) * std_dev
         self.biases = np.random.randn(1, output_size)
 
         self.weights_gradient = np.zeros_like(self.weights)
