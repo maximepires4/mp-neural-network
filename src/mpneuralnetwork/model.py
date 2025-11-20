@@ -1,7 +1,7 @@
 import numpy as np
 
-from .activations import Softmax
-from .losses import MSE, CategoricalCrossEntropy
+from .activations import Sigmoid, Softmax
+from .losses import MSE, BinaryCrossEntropy, CategoricalCrossEntropy
 from .optimizers import SGD
 
 
@@ -47,7 +47,7 @@ class Model:
                         )
                         accuracy += correct_predictions
                     elif y_batch.ndim == 1:
-                        pred_labels = (predictions > 0.5).astype(int)
+                        pred_labels = (predictions > 0).astype(int)
                         accuracy += np.sum(pred_labels == y_batch)
 
                 grad = self.loss.prime(predictions, y_batch)
@@ -90,5 +90,7 @@ class Model:
         
         if isinstance(self.loss, CategoricalCrossEntropy):
             output = Softmax().forward(output)
+        elif isinstance(self.loss, BinaryCrossEntropy):
+            output = Sigmoid().forward(output)
 
         return output
