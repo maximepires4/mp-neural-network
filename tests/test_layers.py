@@ -1,7 +1,10 @@
 import numpy as np
 import pytest
-from mpneuralnetwork.layers import Dense
+from mpneuralnetwork.layers import Dense, Dropout
 from mpneuralnetwork.losses import MSE
+
+
+np.random.seed(69)  # For reproducible test data in parametrization
 
 
 @pytest.mark.parametrize(
@@ -116,3 +119,127 @@ def test_dense_gradient_checking():
     
     # 5c. Assert gradients are close
     assert np.allclose(analytical_grads_x, numerical_grads_x, atol=epsilon), "Input gradients do not match"
+
+
+def _check_gradient(layer, x, y, loss_fn, epsilon=1e-5, atol=1e-5):
+    """
+    Helper function to perform numerical gradient checking on the input gradient (dL/dX).
+    """
+    # 1. Get analytical gradient
+    preds = layer.forward(x.copy())
+    output_gradient = loss_fn.prime(preds, y)
+    analytical_grads = layer.backward(output_gradient)
+
+    # 2. Get numerical gradient
+    numerical_grads = np.zeros_like(x)
+    it = np.nditer(x, flags=['multi_index'], op_flags=['readwrite'])
+    while not it.finished:
+        ix = it.multi_index
+        
+        original_value = x[ix]
+        
+        x[ix] = original_value + epsilon
+        preds_plus = layer.forward(x.copy())
+        loss_plus = np.sum(loss_fn.direct(preds_plus, y))
+
+        x[ix] = original_value - epsilon
+        preds_minus = layer.forward(x.copy())
+        loss_minus = np.sum(loss_fn.direct(preds_minus, y))
+
+        x[ix] = original_value
+        
+        numerical_grads[ix] = (loss_plus - loss_minus) / (2 * epsilon)
+        it.iternext()
+        
+    # 3. Assert that the gradients are close
+    assert np.allclose(analytical_grads, numerical_grads, atol=atol), (
+        f"Gradient mismatch for layer {layer.__class__.__name__}"
+    )
+
+
+
+
+def test_dropout_gradient():
+    """
+    Performs numerical gradient checking for the Dropout layer.
+    This test is specific because it must handle the stochastic mask correctly.
+    """
+    np.random.seed(69)
+    batch_size, n_features = 4, 10
+    
+    layer = Dropout(probability=0.5)
+    loss_fn = MSE()
+    
+    X = np.random.randn(batch_size, n_features)
+    Y = np.random.randn(batch_size, n_features)
+
+    # --- Analytical Gradient ---
+    # 1. Do a forward pass to generate and store the dropout mask internally.
+    preds = layer.forward(X.copy(), training=True)
+    
+    # 2. Get the gradient from the loss function.
+    output_gradient = loss_fn.prime(preds, Y)
+    
+    # 3. Calculate the analytical gradient using the backward method.
+    analytical_grads = layer.backward(output_gradient)
+
+    # --- Numerical Gradient ---
+    # Use the exact same mask that was generated during the forward pass.
+    fixed_mask = layer.mask
+    epsilon = 1e-5
+    numerical_grads = np.zeros_like(X)
+    
+    it = np.nditer(X, flags=['multi_index'], op_flags=['readwrite'])
+    while not it.finished:
+        ix = it.multi_index
+        
+        original_value = X[ix]
+        
+        # Calculate loss for x + epsilon, using the fixed mask
+        X[ix] = original_value + epsilon
+        preds_plus = X * fixed_mask
+        loss_plus = np.sum(loss_fn.direct(preds_plus, Y))
+
+        # Calculate loss for x - epsilon, using the fixed mask
+        X[ix] = original_value - epsilon
+        preds_minus = X * fixed_mask
+        loss_minus = np.sum(loss_fn.direct(preds_minus, Y))
+
+        # Restore original value and compute numerical gradient
+        X[ix] = original_value
+        numerical_grads[ix] = (loss_plus - loss_minus) / (2 * epsilon)
+        
+        it.iternext()
+
+    # --- Assert ---
+    assert np.allclose(analytical_grads, numerical_grads, atol=epsilon), "Dropout gradient does not match"
+
+
+@pytest.mark.parametrize(
+    "layer, input_shape, expected_output_shape",
+    [
+        # Dense Layer
+        (Dense(10, 5), (64, 10), (64, 5)),
+        (Dense(3, 1), (1, 3), (1, 1)),
+        
+        # Dropout Layer (should not change shape)
+        (Dropout(0.5), (128, 20), (128, 20)),
+    ]
+)
+def test_layer_output_shapes(layer, input_shape, expected_output_shape):
+    """
+    Tests that the output shape of a layer's forward pass is correct.
+    """
+    # 1. Arrange: Create random input data with the specified shape
+    input_data = np.random.randn(*input_shape)
+
+    # 2. Act: Perform a forward pass
+    output = layer.forward(input_data)
+
+    # 3. Assert: Check if the output shape matches the expected shape
+    assert output.shape == expected_output_shape, (
+        f"Shape mismatch for layer {layer.__class__.__name__}. "
+        f"Input: {input_shape}, Output: {output.shape}, Expected: {expected_output_shape}"
+    )
+    
+    

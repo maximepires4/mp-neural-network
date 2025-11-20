@@ -70,8 +70,203 @@ def test_mse_zero_loss():
     assert np.isclose(mse.direct(y, y), 0)
 
 def test_cce_perfect_prediction():
+
     """Tests that CCE loss is near zero for a perfect prediction."""
+
     cce = CategoricalCrossEntropy()
+
     logits_perfect = np.array([[-10.0, -10.0, 20.0]])  # Almost certain prediction
+
     y_true_perfect = np.array([[0.0, 0.0, 1.0]])
+
     assert np.isclose(cce.direct(logits_perfect, y_true_perfect), 0)
+
+
+
+
+
+@pytest.mark.parametrize(
+
+    "loss_class, y_pred_shape, y_true_shape",
+
+    [
+
+        (MSE, (64, 10), (64, 10)),
+
+        (BinaryCrossEntropy, (32, 1), (32, 1)),
+
+        (CategoricalCrossEntropy, (16, 5), (16, 5)),
+
+    ]
+
+)
+
+def test_loss_gradient_shape(loss_class, y_pred_shape, y_true_shape):
+
+    """
+
+    Tests that the shape of the gradient from the loss's prime method
+
+    matches the shape of the input predictions.
+
+    """
+
+    # 1. Arrange
+
+    loss_fn = loss_class()
+
+    y_pred = np.random.randn(*y_pred_shape)
+
+    y_true = np.random.randn(*y_true_shape)
+
+
+
+    # 2. Act
+
+    gradient = loss_fn.prime(y_pred, y_true)
+
+
+
+    # 3. Assert
+
+    assert gradient.shape == y_pred.shape, (
+
+        f"Shape mismatch for {loss_class.__name__} gradient. "
+
+        f"Expected {y_pred.shape}, but got {gradient.shape}."
+
+    )
+
+
+
+
+
+def _check_loss_gradient(loss_fn, y_pred, y_true, epsilon=1e-5, atol=1e-5):
+
+    """
+
+    Helper function to perform numerical gradient checking for a loss function's prime method.
+
+    """
+
+    # 1. Analytical gradient
+
+    analytical_grad = loss_fn.prime(y_pred.copy(), y_true)
+
+
+
+    # 2. Numerical gradient
+
+    numerical_grad = np.zeros_like(y_pred)
+
+    it = np.nditer(y_pred, flags=['multi_index'], op_flags=['readwrite'])
+
+    while not it.finished:
+
+        ix = it.multi_index
+
+        
+
+        original_value = y_pred[ix]
+
+        
+
+        # Loss for y_pred + epsilon
+
+        y_pred[ix] = original_value + epsilon
+
+        loss_plus = loss_fn.direct(y_pred.copy(), y_true)
+
+        
+
+        # Loss for y_pred - epsilon
+
+        y_pred[ix] = original_value - epsilon
+
+        loss_minus = loss_fn.direct(y_pred.copy(), y_true)
+
+        
+
+        # Restore original value
+
+        y_pred[ix] = original_value
+
+        
+
+        # Compute numerical gradient
+
+        numerical_grad[ix] = (loss_plus - loss_minus) / (2 * epsilon)
+
+        
+
+        it.iternext()
+
+
+
+    # 3. Assert
+
+    assert np.allclose(analytical_grad, numerical_grad, atol=atol), (
+
+        f"Gradient mismatch for loss {loss_fn.__class__.__name__}"
+
+    )
+
+
+
+
+
+@pytest.mark.parametrize(
+
+    "loss_class, y_pred_shape, y_true_shape",
+
+    [
+
+        (MSE, (4, 5), (4, 5)),
+
+        (BinaryCrossEntropy, (8, 1), (8, 1)),
+
+        (CategoricalCrossEntropy, (16, 10), (16, 10)),
+
+    ]
+
+)
+
+def test_loss_numerical_gradients(loss_class, y_pred_shape, y_true_shape):
+
+    """
+
+    Performs numerical gradient checking for all loss functions.
+
+    """
+
+    np.random.seed(69)
+
+    loss_fn = loss_class()
+
+    
+
+    y_pred = np.random.randn(*y_pred_shape)
+
+    y_true = np.random.randn(*y_true_shape)
+
+
+
+    # For CCE, y_true should be one-hot encoded
+
+    if isinstance(loss_fn, CategoricalCrossEntropy):
+
+        y_true = np.eye(y_true_shape[1])[np.random.choice(y_true_shape[1], y_true_shape[0])]
+
+
+
+    # For BCE, y_true should be 0s and 1s
+
+    if isinstance(loss_fn, BinaryCrossEntropy):
+
+        y_true = np.random.randint(0, 2, size=y_true_shape)
+
+
+
+    _check_loss_gradient(loss_fn, y_pred, y_true)
+
+

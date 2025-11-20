@@ -87,45 +87,113 @@ def test_swish(input_val, expected_forward, expected_backward):
     assert np.allclose(activation.backward(1), expected_backward)
 
 
-def test_softmax_gradient_checking():
+def _check_gradient(layer, x, y, loss_fn, epsilon=1e-5, atol=1e-5):
     """
-    Performs numerical gradient checking for the Softmax layer's backward pass.
-    This is a more complex test to ensure mathematical correctness of the gradient.
-    """
-    # 1. Setup
-    batch_size, n_inputs = 4, 5
-    layer = Softmax()
-    loss_fn = MSE()
-    epsilon = 1e-5
+    Helper function to perform numerical gradient checking for a layer's backward pass.
 
-    # 2. Random data
+    Args:
+        layer: The layer instance to test.
+        x: Input data.
+        y: True labels.
+        loss_fn: The loss function instance.
+        epsilon: A small value for finite difference calculation.
+        atol: The absolute tolerance for comparing analytical and numerical gradients.
+    """
+    # 1. Calculate analytical gradient (the one computed by the backward method)
+    preds = layer.forward(x.copy())
+    output_gradient = loss_fn.prime(preds, y)
+    analytical_grads_x = layer.backward(output_gradient)
+
+    # 2. Calculate numerical gradient (the "true" gradient using finite differences)
+    numerical_grads_x = np.zeros_like(x)
+    
+    it = np.nditer(x, flags=['multi_index'], op_flags=['readwrite'])
+    while not it.finished:
+        ix = it.multi_index
+        
+        # Save original value
+        original_value = x[ix]
+        
+        # Calculate loss for x + epsilon
+        x[ix] = original_value + epsilon
+        preds_plus = layer.forward(x.copy())
+        loss_plus = np.sum(loss_fn.direct(preds_plus, y)) # Summing loss over batch and features
+
+        # Calculate loss for x - epsilon
+        x[ix] = original_value - epsilon
+        preds_minus = layer.forward(x.copy())
+        loss_minus = np.sum(loss_fn.direct(preds_minus, y))
+
+        # Restore original value
+        x[ix] = original_value
+        
+        # Compute the slope and store it
+        numerical_grads_x[ix] = (loss_plus - loss_minus) / (2 * epsilon)
+        
+        it.iternext()
+        
+    # 3. Assert that the two gradients are close
+    assert np.allclose(analytical_grads_x, numerical_grads_x, atol=atol), (
+        f"Gradient mismatch for layer {layer.__class__.__name__}"
+    )
+
+
+@pytest.mark.parametrize(
+    "activation_class, activation_args",
+    [
+        (Sigmoid, {}),
+        (Tanh, {}),
+        (ReLU, {}),
+        (PReLU, {'alpha': 0.01}),
+        (Swish, {}),
+        (Softmax, {}),
+    ]
+)
+def test_activation_gradients(activation_class, activation_args):
+    """
+    Performs numerical gradient checking for all activation layers.
+    """
+    np.random.seed(69)
+    batch_size, n_inputs = 4, 5
+    
+    layer = activation_class(**activation_args)
+    loss_fn = MSE()
+    
     X = np.random.randn(batch_size, n_inputs)
     Y = np.random.randn(batch_size, n_inputs)
 
-    # 3. Calculate analytical gradient (the one computed by the function)
-    preds = layer.forward(X)
-    output_gradient = loss_fn.prime(preds, Y)
-    analytical_grads_x = layer.backward(output_gradient)
+    # PReLU can be unstable with large inputs, so we scale them down for this test
+    if isinstance(layer, PReLU):
+        X /= 10
+    
+    _check_gradient(layer, X, Y, loss_fn)
 
-    # 4. Calculate numerical gradient (the "true" gradient)
-    numerical_grads_x = np.zeros_like(X)
-    for i in range(X.shape[0]):
-        for j in range(X.shape[1]):
-            # Calculate loss for x + epsilon
-            X[i, j] += epsilon
-            preds_plus = layer.forward(X)
-            loss_plus = loss_fn.direct(preds_plus, Y)
-            
-            # Calculate loss for x - epsilon
-            X[i, j] -= 2 * epsilon
-            preds_minus = layer.forward(X)
-            loss_minus = loss_fn.direct(preds_minus, Y)
-            
-            # Restore original value
-            X[i, j] += epsilon
-            
-            # Compute the slope
-            numerical_grads_x[i, j] = (loss_plus - loss_minus) / (2 * epsilon)
-            
-    # 5. Assert that the two gradients are close
-    assert np.allclose(analytical_grads_x, numerical_grads_x, atol=1e-5), "Softmax input gradients do not match"
+
+@pytest.mark.parametrize(
+    "activation_class, activation_args",
+    [
+        (Sigmoid, {}),
+        (Tanh, {}),
+        (ReLU, {}),
+        (PReLU, {'alpha': 0.01}),
+        (Swish, {}),
+        (Softmax, {}),
+    ]
+)
+def test_activation_output_shapes(activation_class, activation_args):
+    """
+    Tests that the output shape of an activation function's forward pass is the same as the input shape.
+    """
+    # 1. Arrange
+    layer = activation_class(**activation_args)
+    input_shape = (64, 10)  # Example batch of 64 samples, 10 features
+    input_data = np.random.randn(*input_shape)
+
+    # 2. Act
+    output = layer.forward(input_data)
+
+    # 3. Assert
+    assert output.shape == input_shape, (
+        f"Shape mismatch for activation {activation_class.__name__}. "
+        f"Input: {input_shape}, Output: {output.shape}"
+    )
