@@ -16,7 +16,6 @@ class Layer:
 
 class Dense(Layer):
     def __init__(self, input_size, output_size, initialization=None):
-
         std_dev = 0.1
 
         if initialization == 'he':
@@ -40,6 +39,14 @@ class Dense(Layer):
 
         return output_gradient_batch @ self.weights.T
 
+    @property
+    def params(self):
+        return {
+            "weights": (self.weights, self.weights_gradient),
+            "biases": (self.biases, self.biases_gradient),
+        }
+
+
 class Dropout(Layer):
     def __init__(self, probability=0.5):
         self.probability = probability
@@ -55,6 +62,7 @@ class Dropout(Layer):
 
     def backward(self, output_gradient_batch):
         return output_gradient_batch * self.mask
+
 
 class Convolutional(Layer):
     def __init__(self, input_shape, kernel_size, depth):
