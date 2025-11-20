@@ -1,6 +1,7 @@
 import numpy as np
 
-from .activations import Sigmoid, Softmax
+from .layers import Dense
+from .activations import Sigmoid, Softmax, ReLU, PReLU, Swish
 from .losses import MSE, BinaryCrossEntropy, CategoricalCrossEntropy
 from .optimizers import SGD
 
@@ -10,11 +11,40 @@ class Model:
         self.layers = layers
         self.loss = loss
         self.optimizer = optimizer
+        self.output_activation = None
+
+        self._init_smart_weights()
+        self._init_output_activation()
 
         if isinstance(loss, MSE):
             self.task_type = "regression"
         else:
             self.task_type = "classification"
+
+    def _init_smart_weights(self):
+        for i in range(len(self.layers)):
+            layer = self.layers[i]
+
+            if isinstance(layer, (Dense)) and getattr(layer, 'initialization') == 'auto':
+                method = 'xavier'
+
+                if i + 1 < len(self.layers):
+                    next_layer = self.layers[i+1]
+
+                    if isinstance(next_layer, (ReLU, PReLU, Swish)):
+                        method = 'he'
+
+                layer.init_weights(method)
+
+    def _init_output_activation(self):
+        if isinstance(self.loss, BinaryCrossEntropy):
+            self.output_activation = Sigmoid()
+
+        elif isinstance(self.loss, CategoricalCrossEntropy):
+            self.output_activation = Softmax()
+
+        if isinstance(self.layers[len(self.layers) - 1], type(self.output_activation)):
+            self.layers = self.layers[:-1]
 
     def train(self, X_train, y_train, epochs, batch_size):
         num_samples = X_train.shape[0]
@@ -67,8 +97,16 @@ class Model:
                 print(f"Epoch {epoch + 1}/{epochs}      error={error:.4f}")
 
     def test(self, X_test, y_test):
-        predictions = self.predict(X_test)
-        error = self.loss.direct(predictions, y_test)
+
+        logits = np.copy(X_test)
+        for layer in self.layers:
+            logits = layer.forward(logits, training=False)
+
+        error = self.loss.direct(logits, y_test)
+
+        predictions = logits
+        if self.output_activation is not None:
+            predictions = self.output_activation.forward(logits)
 
         accuracy = None
         if self.task_type != "regression":
@@ -87,10 +125,8 @@ class Model:
         output = np.copy(input)
         for layer in self.layers:
             output = layer.forward(output, training=False)
-        
-        if isinstance(self.loss, CategoricalCrossEntropy):
-            output = Softmax().forward(output)
-        elif isinstance(self.loss, BinaryCrossEntropy):
-            output = Sigmoid().forward(output)
 
+        if self.output_activation is not None:
+            output = self.output_activation.forward(output)
+        
         return output

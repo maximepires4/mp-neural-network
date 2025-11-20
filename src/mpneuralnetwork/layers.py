@@ -15,19 +15,31 @@ class Layer:
 
 
 class Dense(Layer):
-    def __init__(self, input_size, output_size, initialization=None):
+    def __init__(self, input_size, output_size, initialization='auto'):
+        self.input_size = input_size
+        self.output_size = output_size
+        self.initialization = initialization
+
+        self.weights = None
+        self.weights_gradient = None
+        
+        self.biases = np.random.randn(1, output_size)
+        self.biases_gradient = np.zeros_like(self.biases)
+        
+
+        if self.initialization != 'auto':
+            self.init_weights(initialization)
+
+    def init_weights(self, method):
         std_dev = 0.1
 
-        if initialization == 'he':
-            std_dev = np.sqrt(2.0 / input_size)
-        elif initialization == 'xavier':
-            std_dev = np.sqrt(1.0 / input_size)
+        if method == 'he':
+            std_dev = np.sqrt(2.0 / self.input_size)
+        elif method == 'xavier':
+            std_dev = np.sqrt(1.0 / self.input_size)
 
-        self.weights = np.random.randn(input_size, output_size) * std_dev
-        self.biases = np.random.randn(1, output_size)
-
+        self.weights = np.random.randn(self.input_size, self.output_size) * std_dev
         self.weights_gradient = np.zeros_like(self.weights)
-        self.biases_gradient = np.zeros_like(self.biases)
 
     def forward(self, input_batch, training=True):
         self.input = input_batch
