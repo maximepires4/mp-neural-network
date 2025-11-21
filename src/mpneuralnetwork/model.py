@@ -1,10 +1,13 @@
+import json
+from collections.abc import Callable
+
 import numpy as np
 from numpy.typing import NDArray
 
-from .activations import Activation, PReLU, ReLU, Sigmoid, Softmax, Swish
-from .layers import Dense, Layer, Lit_W
+from .activations import Activation, PReLU, ReLU, Sigmoid, Softmax, Swish, Tanh
+from .layers import Convolutional, Dense, Dropout, Layer, Lit_W, Reshape
 from .losses import MSE, BinaryCrossEntropy, CategoricalCrossEntropy, Loss
-from .optimizers import SGD, Optimizer
+from .optimizers import SGD, Adam, Optimizer, RMSprop
 
 
 class Model:
@@ -150,3 +153,146 @@ class Model:
             output = self.output_activation.forward(output)
 
         return output
+
+    def save(self, filepath: str) -> None:
+        layers_config: list = []
+        for layer in self.layers:
+            layers_config.append(layer.get_config())
+
+        optimizer_globals: dict = {}
+        optimizer_params: dict = {}
+
+        if self.optimizer.params:
+            for param_name, param in self.optimizer.params.items():
+                if isinstance(param, (int, float, str, bool)) or param is None:
+                    optimizer_globals[param_name] = param
+                else:
+                    optimizer_params[param_name] = param
+
+        model_config: dict = {
+            "loss": self.loss.get_config(),
+            "optimizer": self.optimizer.get_config(),
+            "optimizer_globals": optimizer_globals,
+        }
+
+        weights_dict: dict = {}
+        for i, layer in enumerate(self.layers):
+            if hasattr(layer, "params"):
+                for l_param_name, (l_param, _) in layer.params.items():
+                    p_id: int = id(l_param)
+                    logical_name: str = f"layer_{i}_{l_param_name}"
+
+                    weights_dict[logical_name] = l_param
+
+                    for o_param_name, o_param in optimizer_params.items():
+                        if p_id in o_param:
+                            weights_dict[f"optimizer_{o_param_name}_{logical_name}"] = o_param[p_id]
+
+        if filepath[-4:] != ".npz":
+            filepath = f"{filepath}.npz"
+
+        save_data: dict = weights_dict.copy()
+        save_data["architecture"] = json.dumps(layers_config)
+        save_data["model_config"] = json.dumps(model_config)
+
+        np.savez_compressed(filepath, **save_data)
+
+    REGISTRY = {
+        # Layers
+        "Layer": Layer,
+        "Dense": Dense,
+        "Dropout": Dropout,
+        "Convolutional": Convolutional,
+        "Reshape": Reshape,
+        # Activations
+        "Activation": Activation,
+        "PReLU": PReLU,
+        "ReLU": ReLU,
+        "Sigmoid": Sigmoid,
+        "Softmax": Softmax,
+        "Swish": Swish,
+        "Tanh": Tanh,
+        # Losses
+        "Loss": Loss,
+        "MSE": MSE,
+        "BinaryCrossEntropy": BinaryCrossEntropy,
+        "CategoricalCrossEntropy": CategoricalCrossEntropy,
+        # Optimizers
+        "Optimizer": Optimizer,
+        "SGD": SGD,
+        "Adam": Adam,
+        "RMSprop": RMSprop,
+    }
+
+    @staticmethod
+    def load(filepath: str) -> "Model":
+        if filepath[-4:] != ".npz":
+            filepath = f"{filepath}.npz"
+
+        data: dict = np.load(filepath, allow_pickle=True)
+
+        layers_config: dict = json.loads(str(data["architecture"]))
+        model_config: dict = json.loads(str(data["model_config"]))
+
+        layers: list[Layer] = []
+        for conf in layers_config:
+            layer_type: str = str(conf.pop("type"))
+            layer_class: Callable | None = Model.REGISTRY.get(layer_type)
+
+            if layer_class is None:
+                raise ValueError(f"Unknown layer type: {layer_type}")
+
+            layer: Layer = layer_class(**conf)
+            layers.append(layer)
+
+        loss_conf: dict = model_config["loss"]
+        loss_type: str = str(loss_conf.pop("type"))
+        loss_class: Callable | None = Model.REGISTRY.get(loss_type)
+
+        if loss_class is None:
+            raise ValueError(f"Unknown loss type: {loss_type}")
+
+        loss: Loss = loss_class(**loss_conf)
+
+        optim_conf: dict | str = model_config["optimizer"]
+        optim_type: str
+
+        if isinstance(optim_conf, dict):
+            optim_type = str(optim_conf.pop("type"))
+        else:
+            optim_type = str(optim_conf)
+            optim_conf = {}
+
+        optim_class: Callable | None = Model.REGISTRY.get(optim_type)
+
+        if optim_class is None:
+            raise ValueError(f"Unknown optimizer type: {optim_type}")
+
+        optimizer: Optimizer = optim_class(**optim_conf)
+
+        if "optimizer_globals" in model_config:
+            for param_name, param in model_config["optimizer_globals"].items():
+                setattr(optimizer, param_name, param)
+
+        model = Model(layers, loss, optimizer)
+
+        for i, layer in enumerate(model.layers):
+            if hasattr(layer, "params"):
+                for l_param_name, (_, _) in layer.params.items():
+                    logical_name = f"layer_{i}_{l_param_name}"
+
+                    if logical_name in data:
+                        setattr(layer, l_param_name, data[logical_name])
+
+                        new_param_val = getattr(layer, l_param_name)
+                        p_id = id(new_param_val)
+
+                        for o_param_name, o_param in optimizer.params.items():
+                            if not isinstance(o_param, dict):
+                                continue
+
+                            key = f"optimizer_{o_param_name}_{logical_name}"
+                            if key in data:
+                                o_param[p_id] = data[key]
+
+        return model

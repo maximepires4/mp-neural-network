@@ -3,6 +3,8 @@ import gzip
 import dill as pickle  # Utilise dill pour correspondre à create_model.py
 import numpy as np
 
+from mpneuralnetwork.model import Model
+
 
 def load_data():
     """Charge le jeu de données MNIST."""
@@ -17,8 +19,7 @@ _, _, test_data = load_data()
 test_inputs = test_data[0]
 test_labels = test_data[1]
 
-with open("output/model.pkl", "rb") as f:
-    model = pickle.load(f)
+model = Model.load("output/model.npz")
 
 correct_predictions = 0
 

@@ -10,6 +10,13 @@ class Optimizer:
     def step(self, layers: list[Layer]) -> None:
         pass
 
+    def get_config(self) -> dict:
+        return {"type": self.__class__.__name__}
+
+    @property
+    def params(self) -> dict:
+        return {}
+
 
 class SGD(Optimizer):
     def __init__(self, learning_rate: float = 0.01, momentum: float = 0.1) -> None:
@@ -31,6 +38,15 @@ class SGD(Optimizer):
 
                 self.velocities[p_id] = self.momentum * self.velocities[p_id] - self.learning_rate * grad
                 param += self.velocities[p_id]
+
+    def get_config(self) -> dict:
+        config = super().get_config()
+        config.update({"learning_rate": self.learning_rate, "momentum": self.momentum})
+        return config
+
+    @property
+    def params(self) -> dict:
+        return {"velocities": self.velocities}
 
 
 class RMSprop(Optimizer):
@@ -55,6 +71,15 @@ class RMSprop(Optimizer):
                 self.cache[p_id] = self.decay_rate * self.cache[p_id] + (1 - self.decay_rate) * np.power(grad, 2)
 
                 param -= self.learning_rate * grad / np.sqrt(self.cache[p_id] + self.epsilon)
+
+    def get_config(self) -> dict:
+        config = super().get_config()
+        config.update({"learning_rate": self.learning_rate, "decay_rate": self.decay_rate, "epsilon": self.epsilon})
+        return config
+
+    @property
+    def params(self) -> dict:
+        return {"cache": self.cache}
 
 
 class Adam(Optimizer):
@@ -89,3 +114,23 @@ class Adam(Optimizer):
                 v_hat = self.velocities[p_id] / (1 - self.beta2**self.t)
 
                 param -= self.learning_rate * m_hat / (np.sqrt(v_hat) + self.epsilon)
+
+    def get_config(self) -> dict:
+        config = super().get_config()
+        config.update(
+            {
+                "learning_rate": self.learning_rate,
+                "beta1": self.beta1,
+                "beta2": self.beta2,
+                "epsilon": self.epsilon,
+            }
+        )
+        return config
+
+    @property
+    def params(self) -> dict:
+        return {
+            "t": self.t,
+            "momentums": self.momentums,
+            "velocities": self.velocities,
+        }

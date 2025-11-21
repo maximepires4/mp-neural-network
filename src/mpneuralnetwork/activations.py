@@ -45,8 +45,14 @@ class ReLU(Activation):
 
 
 class PReLU(Activation):
-    def __init__(self, alpha=0.01):
+    def __init__(self, alpha: float = 0.01):
         super().__init__(lambda x: np.maximum(alpha * x, x), lambda x: np.where(x < 0, alpha, 1))
+        self.alpha: float = alpha
+
+    def get_config(self) -> dict:
+        config = super().get_config()
+        config.update({"alpha": self.alpha})
+        return config
 
 
 class Swish(Activation):

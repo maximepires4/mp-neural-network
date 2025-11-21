@@ -38,5 +38,4 @@ model.train(input, output, epochs=10, batch_size=10)
 
 Path("output/").mkdir(parents=True, exist_ok=True)
 
-with open("output/model.pkl", "wb") as f:
-    pickle.dump(model, f)
+model.save("output/model.npz")

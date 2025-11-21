@@ -13,6 +13,9 @@ class Loss:
     def prime(self, output: NDArray, output_expected: NDArray) -> NDArray:
         pass
 
+    def get_config(self) -> dict:
+        return {"type": self.__class__.__name__}
+
 
 class MSE(Loss):
     def direct(self, output: NDArray, output_expected: NDArray) -> float:

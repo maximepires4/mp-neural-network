@@ -15,6 +15,9 @@ class Layer:
         self.input_size: int
         self.output_size: int
 
+    def get_config(self) -> dict:
+        return {"type": self.__class__.__name__}
+
     def build(self, input_size: int) -> None:
         self.input_size = input_size
         self.output_size = input_size
@@ -46,6 +49,11 @@ class Dense(Layer):
 
         if input_size is not None:
             self.build(input_size)
+
+    def get_config(self) -> dict:
+        config = super().get_config()
+        config.update({"output_size": self.output_size, "input_size": self.input_size, "initialization": self.initialization})
+        return config
 
     def build(self, input_size: int):
         self.input_size = input_size
@@ -91,6 +99,11 @@ class Dropout(Layer):
     def __init__(self, probability: float = 0.5) -> None:
         self.probability: float = probability
         self.mask: NDArray
+
+    def get_config(self) -> dict:
+        config = super().get_config()
+        config.update({"probability": self.probability})
+        return config
 
     def forward(self, input_batch: NDArray, training: bool = True) -> NDArray:
         if not training:
