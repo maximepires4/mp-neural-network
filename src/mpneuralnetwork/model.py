@@ -72,7 +72,7 @@ class Model:
         if isinstance(self.layers[len(self.layers) - 1], type(self.output_activation)):
             self.layers = self.layers[:-1]
 
-    def train(self, X_train: NDArray, y_train: NDArray, epochs: int, batch_size: int) -> None:
+    def train(self, X_train: NDArray, y_train: NDArray, epochs: int, batch_size: int, evaluation: tuple[NDArray, NDArray]) -> None:
         num_samples: int = X_train.shape[0]
         num_batches: int = int(np.floor(num_samples / batch_size))
 
@@ -90,19 +90,10 @@ class Model:
                 X_batch: NDArray = X_shuffled[start:end]
                 y_batch: NDArray = y_shuffled[start:end]
 
-                predictions: NDArray = X_batch
-                for layer in self.layers:
-                    predictions = layer.forward(predictions)
-
-                error += self.loss.direct(predictions, y_batch)
-
-                if accuracy is not None:
-                    if y_batch.ndim == 2 and y_batch.shape[1] > 1:
-                        correct_predictions = np.sum(np.argmax(predictions, axis=1) == np.argmax(y_batch, axis=1))
-                        accuracy += correct_predictions
-                    elif y_batch.ndim == 1:
-                        pred_labels = (predictions > 0).astype(int)
-                        accuracy += np.sum(pred_labels == y_batch)
+                predictions, (new_error, new_accuracy) = self.evaluate(X_batch, y_batch, training=True)
+                error += new_error
+                if accuracy is not None and new_accuracy is not None:
+                    accuracy += new_accuracy
 
                 grad: NDArray = self.loss.prime(predictions, y_batch)
 
@@ -113,31 +104,40 @@ class Model:
 
             error /= num_batches
 
-            if accuracy is not None:
-                total_samples = num_batches * batch_size
-                accuracy /= total_samples
-                print(f"Epoch {epoch + 1}/{epochs}      error={error:.4f}       accuracy={accuracy * 100:.2f}%")
+            _, (val_error, val_accuracy) = self.evaluate(evaluation[0], evaluation[1], training=False)
+
+            if accuracy is not None and val_accuracy is not None:
+                accuracy /= num_batches
+                print(
+                    f"epoch {epoch + 1}/{epochs}        error={error:.4f}       accuracy={accuracy * 100:.2f}%      |"
+                    + f"        val_error={val_error:.4f}       val_accuracy={val_accuracy * 100:.2f}%"
+                )
             else:
-                print(f"Epoch {epoch + 1}/{epochs}      error={error:.4f}")
+                print(f"epoch {epoch + 1}/{epochs}      error={error:.4f}       |       val_error={val_error:.4f}")
 
-    def test(self, X_test: NDArray, y_test: NDArray) -> None:
-        logits: NDArray = np.copy(X_test)
+    def evaluate(self, X: NDArray, y: NDArray, training=False) -> tuple[NDArray, tuple[float, float | None]]:
+        logits: NDArray = np.copy(X)
         for layer in self.layers:
-            logits = layer.forward(logits, training=False)
+            logits = layer.forward(logits, training=training)
 
-        error: float = self.loss.direct(logits, y_test)
+        error: float = self.loss.direct(logits, y)
 
         predictions: NDArray = logits
-        if self.output_activation is not None:
+        if not training and self.output_activation is not None:
             predictions = self.output_activation.forward(logits)
 
         accuracy: float | None = None
         if self.task_type != "regression":
-            if y_test.ndim == 2 and y_test.shape[1] > 1:
-                accuracy = np.sum(np.argmax(predictions, axis=1) == np.argmax(y_test, axis=1)) / y_test.shape[0]
-            elif y_test.ndim == 1:
+            if y.ndim == 2 and y.shape[1] > 1:
+                accuracy = np.sum(np.argmax(predictions, axis=1) == np.argmax(y, axis=1)) / y.shape[0]
+            elif y.ndim == 1:
                 pred_labels = (predictions > 0.5).astype(int)
-                accuracy = np.sum(pred_labels == y_test) / y_test.shape[0]
+                accuracy = np.sum(pred_labels == y) / y.shape[0]
+
+        return predictions, (error, accuracy)
+
+    def test(self, X_test: NDArray, y_test: NDArray) -> None:
+        _, (error, accuracy) = self.evaluate(X_test, y_test, training=False)
 
         if accuracy is not None:
             print(f"Test Error: {error:.4f}, Test Accuracy: {accuracy * 100:.2f}%")
