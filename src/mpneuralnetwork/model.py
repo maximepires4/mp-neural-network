@@ -72,7 +72,7 @@ class Model:
         if isinstance(self.layers[len(self.layers) - 1], type(self.output_activation)):
             self.layers = self.layers[:-1]
 
-    def train(self, X_train: NDArray, y_train: NDArray, epochs: int, batch_size: int, evaluation: tuple[NDArray, NDArray]) -> None:
+    def train(self, X_train: NDArray, y_train: NDArray, epochs: int, batch_size: int, evaluation: tuple[NDArray, NDArray] | None = None) -> None:
         num_samples: int = X_train.shape[0]
         num_batches: int = int(np.floor(num_samples / batch_size))
 
@@ -103,17 +103,22 @@ class Model:
                 self.optimizer.step(self.layers)
 
             error /= num_batches
+            spacing_str = " " * abs(len(str(epochs)) - len(str(epoch + 1)))
+            message = f"epoch {spacing_str}{epoch + 1}/{epochs}   error = {error:.4f}"
 
-            _, (val_error, val_accuracy) = self.evaluate(evaluation[0], evaluation[1], training=False)
-
-            if accuracy is not None and val_accuracy is not None:
+            if accuracy is not None:
                 accuracy /= num_batches
-                print(
-                    f"epoch {epoch + 1}/{epochs}        error={error:.4f}       accuracy={accuracy * 100:.2f}%      |"
-                    + f"        val_error={val_error:.4f}       val_accuracy={val_accuracy * 100:.2f}%"
-                )
-            else:
-                print(f"epoch {epoch + 1}/{epochs}      error={error:.4f}       |       val_error={val_error:.4f}")
+                message += f"   accuracy = {100 * accuracy:.2f}%"
+
+            if evaluation is not None:
+                _, (val_error, val_accuracy) = self.evaluate(evaluation[0], evaluation[1], training=False)
+
+                message += f"   |   val_error = {val_error:.4f}"
+
+                if val_accuracy is not None:
+                    message += f"   val_accuracy = {100 * val_accuracy:.2f}%"
+
+            print(message)
 
     def evaluate(self, X: NDArray, y: NDArray, training=False) -> tuple[NDArray, tuple[float, float | None]]:
         logits: NDArray = np.copy(X)
@@ -140,9 +145,9 @@ class Model:
         _, (error, accuracy) = self.evaluate(X_test, y_test, training=False)
 
         if accuracy is not None:
-            print(f"Test Error: {error:.4f}, Test Accuracy: {accuracy * 100:.2f}%")
+            print(f"test_error = {error:.4f}   test_accuracy = {accuracy * 100:.2f}%")
         else:
-            print(f"Test Error: {error:.4f}")
+            print(f"test error = {error:.4f}")
 
     def predict(self, input: NDArray) -> NDArray:
         output: NDArray = np.copy(input)
