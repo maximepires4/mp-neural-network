@@ -72,8 +72,25 @@ class Model:
         if isinstance(self.layers[len(self.layers) - 1], type(self.output_activation)):
             self.layers = self.layers[:-1]
 
-    def train(self, X_train: NDArray, y_train: NDArray, epochs: int, batch_size: int, evaluation: tuple[NDArray, NDArray] | None = None) -> None:
-        num_samples: int = X_train.shape[0]
+    def train(
+        self,
+        X_train: NDArray,
+        y_train: NDArray,
+        epochs: int,
+        batch_size: int,
+        evaluation: tuple[NDArray, NDArray] | None = None,
+        auto_evaluation: float = 0.2,
+    ) -> None:
+        X_copy = np.copy(X_train)
+        y_copy = np.copy(y_train)
+
+        if evaluation is None and auto_evaluation != 0:
+            split_i = int(len(X_train) * auto_evaluation)
+
+            X_copy, y_copy = X_train[:split_i], y_train[:split_i]
+            evaluation = (X_train[split_i:], y_train[split_i:])
+
+        num_samples: int = X_copy.shape[0]
         num_batches: int = int(np.floor(num_samples / batch_size))
 
         for epoch in range(epochs):
@@ -81,8 +98,8 @@ class Model:
             accuracy: float | None = 0 if self.task_type != "regression" else None
 
             permutation: NDArray = np.random.permutation(num_samples)
-            X_shuffled: NDArray = X_train[permutation]
-            y_shuffled: NDArray = y_train[permutation]
+            X_shuffled: NDArray = X_copy[permutation]
+            y_shuffled: NDArray = y_copy[permutation]
 
             for i in range(num_batches):
                 start: int = i * batch_size
