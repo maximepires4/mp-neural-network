@@ -16,6 +16,7 @@ class Model:
 
         self.task_type: str
 
+        self._build_graph()
         self._init_smart_weights()
         self._init_output_activation()
 
@@ -23,6 +24,22 @@ class Model:
             self.task_type = "regression"
         else:
             self.task_type = "classification"
+
+    def _build_graph(self) -> None:
+        first_layer = self.layers[0]
+
+        if not hasattr(first_layer, "input_size") or first_layer.input_size is None:
+            raise ValueError("Input layer does not define input size")
+
+        current_output_size: int = first_layer.output_size
+
+        for i in range(1, len(self.layers)):
+            layer = self.layers[i]
+
+            layer.build(current_output_size)
+
+            if hasattr(layer, "output_size"):
+                current_output_size = layer.output_size
 
     def _init_smart_weights(self) -> None:
         for i in range(len(self.layers)):

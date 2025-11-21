@@ -29,7 +29,7 @@ def test_dense_forward_pass(input_data, weights, biases, expected_shape, expecte
     # 1. Setup
     n_inputs = input_data.shape[1]
     n_outputs = expected_shape[1]
-    layer = Dense(n_inputs, n_outputs, initialization="xavier")
+    layer = Dense(n_outputs, input_size=n_inputs, initialization="xavier")
     layer.weights = weights
     layer.biases = biases
 
@@ -49,7 +49,7 @@ def test_dense_gradient_checking():
     """
     # 1. Setup
     batch_size, n_inputs, n_outputs = 4, 5, 3
-    layer = Dense(n_inputs, n_outputs, initialization="xavier")
+    layer = Dense(n_outputs, input_size=n_inputs, initialization="xavier")
     loss_fn = MSE()
     epsilon = 1e-5
 
@@ -214,8 +214,8 @@ def test_dropout_gradient():
     "layer, input_shape, expected_output_shape",
     [
         # Dense Layer
-        (Dense(10, 5, initialization="xavier"), (64, 10), (64, 5)),
-        (Dense(3, 1, initialization="xavier"), (1, 3), (1, 1)),
+        (Dense(5, input_size=10, initialization="xavier"), (64, 10), (64, 5)),
+        (Dense(1, input_size=3, initialization="xavier"), (1, 3), (1, 1)),
         # Dropout Layer (should not change shape)
         (Dropout(0.5), (128, 20), (128, 20)),
     ],

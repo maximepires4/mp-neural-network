@@ -30,7 +30,7 @@ output = np.zeros((training_data[1].shape[0], 10))
 for i in range(training_data[1].shape[0]):
     output[i, training_data[1][i]] = 1
 
-network = [Dense(784, 128), Tanh(), Dense(128, 40), Tanh(), Dense(40, 10)]
+network = [Dense(128, input_size=784), Tanh(), Dense(40), Tanh(), Dense(10)]
 
 model = Model(network, CategoricalCrossEntropy())
 

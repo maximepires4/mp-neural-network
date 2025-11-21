@@ -19,7 +19,7 @@ def test_model_learns_on_simple_regression_task():
     X_train = np.array([[0, 0], [0, 1], [1, 0], [1, 1]])
     y_train = np.array([[0], [0.5], [0.5], [1]])  # Target function: y = (x1 + x2) / 2
 
-    layers = [Dense(2, 5), ReLU(), Dense(5, 1)]
+    layers = [Dense(5, input_size=2), ReLU(), Dense(1)]
     loss = MSE()
     optimizer = SGD(learning_rate=0.1, momentum=0)  # Using SGD with no momentum for simplicity
     model = Model(layers=layers, loss=loss, optimizer=optimizer)
@@ -52,7 +52,7 @@ def test_model_learns_on_binary_classification_task():
     y_train = np.array([[0], [1], [1], [0]])
 
     # The model does not need a final Sigmoid layer, as BinaryCrossEntropy loss expects raw logits.
-    layers = [Dense(2, 8, "he"), ReLU(), Dense(8, 1, "xavier")]
+    layers = [Dense(8, input_size=2, initialization="he"), ReLU(), Dense(1, initialization="xavier")]
     loss = BinaryCrossEntropy()
     optimizer = SGD()
     model = Model(layers=layers, loss=loss, optimizer=optimizer)

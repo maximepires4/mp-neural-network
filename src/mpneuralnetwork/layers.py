@@ -12,13 +12,19 @@ class Layer:
     def __init__(self) -> None:
         self.input: NDArray
         self.output: NDArray
+        self.input_size: int
+        self.output_size: int
+
+    def build(self, input_size: int) -> None:
+        self.input_size = input_size
+        self.output_size = input_size
 
     @abstractmethod
     def forward(self, input_batch: NDArray, training: bool = True) -> NDArray:
         pass
 
     @abstractmethod
-    def backward(self, output_gradient_batch: NDArray[np.float64]) -> NDArray:
+    def backward(self, output_gradient_batch: NDArray) -> NDArray:
         pass
 
     @property
@@ -28,19 +34,28 @@ class Layer:
 
 
 class Dense(Layer):
-    def __init__(self, input_size: int, output_size: int, initialization: Lit_W = "auto") -> None:
-        self.input_size: int = input_size
+    def __init__(self, output_size: int, input_size: int | None = None, initialization: Lit_W = "auto") -> None:
+        self.input_size: int
         self.output_size: int = output_size
         self.initialization: Lit_W = initialization
 
         self.weights: NDArray
         self.weights_gradient: NDArray
 
-        self.biases: NDArray = np.random.randn(1, output_size)
-        self.biases_gradient: NDArray = np.zeros_like(self.biases)
+        self.biases: NDArray
+        self.biases_gradient: NDArray
+
+        if input_size is not None:
+            self.build(input_size)
+
+    def build(self, input_size: int):
+        self.input_size = input_size
+
+        self.biases = np.random.randn(1, self.output_size)
+        self.biases_gradient = np.zeros_like(self.biases)
 
         if self.initialization != "auto":
-            self.init_weights(initialization)
+            self.init_weights(self.initialization)
 
     def init_weights(self, method: Lit_W) -> None:
         std_dev = 0.1
