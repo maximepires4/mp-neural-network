@@ -28,9 +28,8 @@ class Layer:
         pass
 
     @property
-    @abstractmethod
     def params(self) -> dict[str, tuple[NDArray, NDArray]]:
-        pass
+        return {}
 
 
 class Dense(Layer):

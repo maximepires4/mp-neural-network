@@ -6,7 +6,7 @@ import dill as pickle
 import numpy as np
 
 from mpneuralnetwork.activations import Tanh
-from mpneuralnetwork.layers import Dense
+from mpneuralnetwork.layers import Dense, Dropout
 from mpneuralnetwork.losses import CategoricalCrossEntropy
 from mpneuralnetwork.model import Model
 
@@ -30,7 +30,7 @@ output = np.zeros((training_data[1].shape[0], 10))
 for i in range(training_data[1].shape[0]):
     output[i, training_data[1][i]] = 1
 
-network = [Dense(128, input_size=784), Tanh(), Dense(40), Tanh(), Dense(10)]
+network = [Dense(128, input_size=784), Tanh(), Dropout(0.2), Dense(40), Tanh(), Dense(10)]
 
 model = Model(network, CategoricalCrossEntropy())
 
