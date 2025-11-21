@@ -1,12 +1,12 @@
 import gzip
-import numpy as np
-
-import dill as pickle
 from pathlib import Path
 
-from mpneuralnetwork.activations import Tanh, Sigmoid, Softmax, ReLU, PReLU, Swish
+import dill as pickle
+import numpy as np
+
+from mpneuralnetwork.activations import Softmax, Tanh
+from mpneuralnetwork.layers import Convolutional, Dense, Reshape
 from mpneuralnetwork.losses import MSE
-from mpneuralnetwork.layers import Dense, Convolutional, Reshape
 from mpneuralnetwork.model import Model
 
 
@@ -41,7 +41,7 @@ network = [
 
 model = Model(network, MSE())
 
-model.train(input, output, epochs=10, learning_rate=0.1, batch_size=10)
+model.train(input, output, epochs=10, batch_size=10)
 
 Path("output/").mkdir(parents=True, exist_ok=True)
 

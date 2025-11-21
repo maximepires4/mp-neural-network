@@ -28,9 +28,6 @@ Homepage = "https://github.com/maximepires4/mp-neural-network"
 Issues = "https://github.com/maximepires4/mp-neural-network/issues"
 
 [project.optional-dependencies]
-test = [
-  "pytest",
-]
 build = [
   "build",
   "twine",
@@ -38,4 +35,49 @@ build = [
 examples = [
   "dill",
   "pillow",
+]
+
+test = [
+    "pytest>=7.0",
+]
+
+dev = [
+    "pytest-cov>=4.0",
+    "ruff==0.14.5",
+    "mypy==1.18.2",
+    "pre-commit>=3.0.0",
+    "types-setuptools"
+]
+
+[tool.ruff]
+line-length = 150
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = []
+
+[tool.ruff.lint.isort]
+known-first-party = ["mpneuralnetwork"]
+
+[tool.mypy]
+python_version = "3.12"
+files = ["src/mpneuralnetwork"]
+exclude = ["tests", "example"]
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+check_untyped_defs = true
+ignore_missing_imports = true  # Utile pour scipy/numpy si stubs manquants
+
+[tool.coverage.run]
+source = ["mpneuralnetwork"]
+omit = ["tests/*", "examples/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError"
 ]

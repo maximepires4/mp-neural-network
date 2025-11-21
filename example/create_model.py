@@ -1,14 +1,13 @@
-import random
-
 import gzip
-import numpy as np
-
-import dill as pickle
+import random
 from pathlib import Path
 
-from mpneuralnetwork.activations import Tanh, Sigmoid, Softmax, ReLU, PReLU, Swish
-from mpneuralnetwork.losses import MSE, CategoricalCrossEntropy
+import dill as pickle
+import numpy as np
+
+from mpneuralnetwork.activations import Tanh
 from mpneuralnetwork.layers import Dense
+from mpneuralnetwork.losses import CategoricalCrossEntropy
 from mpneuralnetwork.model import Model
 
 

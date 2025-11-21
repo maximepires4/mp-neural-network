@@ -1,26 +1,30 @@
 import numpy as np
+from numpy.typing import NDArray
+
+from .layers import Layer
+
+T = dict[int, NDArray]
 
 
 class Optimizer:
-    def step(self, layers):
+    def step(self, layers: list[Layer]) -> None:
         pass
 
 
 class SGD(Optimizer):
-    def __init__(self, learning_rate=0.01, momentum=0.1):
-        self.learning_rate = learning_rate
-        self.momentum = momentum
+    def __init__(self, learning_rate: float = 0.01, momentum: float = 0.1) -> None:
+        self.learning_rate: float = learning_rate
+        self.momentum: float = momentum
 
-        self.velocities = {}
+        self.velocities: T = {}
 
-    def step(self, layers):
+    def step(self, layers: list[Layer]) -> None:
         for layer in layers:
-
-            if not hasattr(layer, 'params'):
+            if not hasattr(layer, "params"):
                 continue
 
             for _, (param, grad) in layer.params.items():
-                p_id = id(param)
+                p_id: int = id(param)
 
                 if p_id not in self.velocities:
                     self.velocities[p_id] = np.zeros_like(param)
@@ -30,21 +34,20 @@ class SGD(Optimizer):
 
 
 class RMSprop(Optimizer):
-    def __init__(self, learning_rate=0.001, decay_rate=0.9, epsilon=1e-8):
-        self.learning_rate = learning_rate
-        self.decay_rate = decay_rate
-        self.epsilon = epsilon
+    def __init__(self, learning_rate: float = 0.001, decay_rate: float = 0.9, epsilon: float = 1e-8) -> None:
+        self.learning_rate: float = learning_rate
+        self.decay_rate: float = decay_rate
+        self.epsilon: float = epsilon
 
-        self.cache = {}
+        self.cache: T = {}
 
-    def step(self, layers):
+    def step(self, layers) -> None:
         for layer in layers:
-
-            if not hasattr(layer, 'params'):
+            if not hasattr(layer, "params"):
                 continue
 
             for _, (param, grad) in layer.params.items():
-                p_id = id(param)
+                p_id: int = id(param)
 
                 if p_id not in self.cache:
                     self.cache[p_id] = np.zeros_like(param)
@@ -55,26 +58,25 @@ class RMSprop(Optimizer):
 
 
 class Adam(Optimizer):
-    def __init__(self, learning_rate=0.001, beta1=0.9, beta2=0.999, epsilon=1e-8):
-        self.learning_rate = learning_rate
-        self.beta1 = beta1
-        self.beta2 = beta2
-        self.epsilon = epsilon
+    def __init__(self, learning_rate: float = 0.001, beta1: float = 0.9, beta2: float = 0.999, epsilon: float = 1e-8) -> None:
+        self.learning_rate: float = learning_rate
+        self.beta1: float = beta1
+        self.beta2: float = beta2
+        self.epsilon: float = epsilon
 
-        self.t = 0
-        self.momentums = {}
-        self.velocities = {}
+        self.t: int = 0
+        self.momentums: T = {}
+        self.velocities: T = {}
 
-    def step(self, layers):
+    def step(self, layers) -> None:
         self.t += 1
 
         for layer in layers:
-
-            if not hasattr(layer, 'params'):
+            if not hasattr(layer, "params"):
                 continue
 
-            for param_name, (param, grad) in layer.params.items():
-                p_id = id(param)
+            for _, (param, grad) in layer.params.items():
+                p_id: int = id(param)
 
                 if p_id not in self.momentums:
                     self.momentums[p_id] = np.zeros_like(param)
@@ -83,7 +85,7 @@ class Adam(Optimizer):
                 self.momentums[p_id] = self.beta1 * self.momentums[p_id] + (1 - self.beta1) * grad
                 self.velocities[p_id] = self.beta2 * self.velocities[p_id] + (1 - self.beta2) * np.power(grad, 2)
 
-                m_hat = self.momentums[p_id] / (1 - self.beta1 ** self.t)
-                v_hat = self.velocities[p_id] / (1 - self.beta2 ** self.t)
+                m_hat = self.momentums[p_id] / (1 - self.beta1**self.t)
+                v_hat = self.velocities[p_id] / (1 - self.beta2**self.t)
 
                 param -= self.learning_rate * m_hat / (np.sqrt(v_hat) + self.epsilon)

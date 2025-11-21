@@ -1,58 +1,72 @@
+from abc import abstractmethod
+from typing import Literal
+
 import numpy as np
+from numpy.typing import NDArray
 from scipy import signal
+
+Lit_W = Literal["auto", "he", "xavier"]
 
 
 class Layer:
-    def __init__(self):
-        self.input = None
-        self.output = None
+    def __init__(self) -> None:
+        self.input: NDArray
+        self.output: NDArray
 
-    def forward(self, input_batch, training=True):
+    @abstractmethod
+    def forward(self, input_batch: NDArray, training: bool = True) -> NDArray:
         pass
 
-    def backward(self, output_gradient_batch):
+    @abstractmethod
+    def backward(self, output_gradient_batch: NDArray[np.float64]) -> NDArray:
+        pass
+
+    @property
+    @abstractmethod
+    def params(self) -> dict[str, tuple[NDArray, NDArray]]:
         pass
 
 
 class Dense(Layer):
-    def __init__(self, input_size, output_size, initialization='auto'):
-        self.input_size = input_size
-        self.output_size = output_size
-        self.initialization = initialization
+    def __init__(self, input_size: int, output_size: int, initialization: Lit_W = "auto") -> None:
+        self.input_size: int = input_size
+        self.output_size: int = output_size
+        self.initialization: Lit_W = initialization
 
-        self.weights = None
-        self.weights_gradient = None
-        
-        self.biases = np.random.randn(1, output_size)
-        self.biases_gradient = np.zeros_like(self.biases)
-        
+        self.weights: NDArray
+        self.weights_gradient: NDArray
 
-        if self.initialization != 'auto':
+        self.biases: NDArray = np.random.randn(1, output_size)
+        self.biases_gradient: NDArray = np.zeros_like(self.biases)
+
+        if self.initialization != "auto":
             self.init_weights(initialization)
 
-    def init_weights(self, method):
+    def init_weights(self, method: Lit_W) -> None:
         std_dev = 0.1
 
-        if method == 'he':
+        if method == "he":
             std_dev = np.sqrt(2.0 / self.input_size)
-        elif method == 'xavier':
+        elif method == "xavier":
             std_dev = np.sqrt(1.0 / self.input_size)
 
         self.weights = np.random.randn(self.input_size, self.output_size) * std_dev
         self.weights_gradient = np.zeros_like(self.weights)
 
-    def forward(self, input_batch, training=True):
+    def forward(self, input_batch: NDArray, training: bool = True) -> NDArray:
         self.input = input_batch
-        return self.input @ self.weights + self.biases
+        res: NDArray = self.input @ self.weights + self.biases
+        return res
 
-    def backward(self, output_gradient_batch):
+    def backward(self, output_gradient_batch: NDArray) -> NDArray:
         self.weights_gradient = self.input.T @ output_gradient_batch
         self.biases_gradient = np.sum(output_gradient_batch, axis=0, keepdims=True)
 
-        return output_gradient_batch @ self.weights.T
+        grad: NDArray = output_gradient_batch @ self.weights.T
+        return grad
 
     @property
-    def params(self):
+    def params(self) -> dict[str, tuple[NDArray, NDArray]]:
         return {
             "weights": (self.weights, self.weights_gradient),
             "biases": (self.biases, self.biases_gradient),
@@ -60,20 +74,22 @@ class Dense(Layer):
 
 
 class Dropout(Layer):
-    def __init__(self, probability=0.5):
-        self.probability = probability
-        self.mask = None
+    def __init__(self, probability: float = 0.5) -> None:
+        self.probability: float = probability
+        self.mask: NDArray
 
-    def forward(self, input_batch, training=True):
+    def forward(self, input_batch: NDArray, training: bool = True) -> NDArray:
         if not training:
             return input_batch
 
         self.mask = np.random.binomial(1, 1 - self.probability, size=input_batch.shape) / (1 - self.probability)
 
-        return input_batch * self.mask
+        res: NDArray = input_batch * self.mask
+        return res
 
-    def backward(self, output_gradient_batch):
-        return output_gradient_batch * self.mask
+    def backward(self, output_gradient_batch: NDArray) -> NDArray:
+        grad: NDArray = output_gradient_batch * self.mask
+        return grad
 
 
 class Convolutional(Layer):
@@ -95,17 +111,13 @@ class Convolutional(Layer):
 
     def forward(self, input_batch, training=True):
         # TODO: Need to vectorize this part. For now, only works for batch_size = 1
-        assert input_batch.ndim == 3, (
-            f"Non-vectorized Convolutional layer received a batch of size > 1 (shape={input_batch.shape})"
-        )
+        assert input_batch.ndim == 3, f"Non-vectorized Convolutional layer received a batch of size > 1 (shape={input_batch.shape})"
 
         self.input = input_batch
         output = np.copy(self.biases)
         for i in range(self.depth):
             for j in range(self.input_depth):
-                output[i] += signal.correlate2d(
-                    self.input[j], self.kernels[i][j], "valid"
-                )
+                output[i] += signal.correlate2d(self.input[j], self.kernels[i][j], "valid")
         return output
 
     def backward(self, output_gradient_batch):
@@ -121,14 +133,15 @@ class Convolutional(Layer):
 
         for i in range(self.depth):
             for j in range(self.input_depth):
-                self.kernels_gradient[i][j] = signal.correlate2d(
-                    self.input[j], output_gradient_batch[i], "valid"
-                )
-                input_gradient[j] += signal.convolve2d(
-                    output_gradient_batch[i], self.kernels[i][j], "full"
-                )
+                self.kernels_gradient[i][j] = signal.correlate2d(self.input[j], output_gradient_batch[i], "valid")
+                input_gradient[j] += signal.convolve2d(output_gradient_batch[i], self.kernels[i][j], "full")
 
         return input_gradient
+
+    @property
+    def params(self) -> dict[str, tuple[NDArray, NDArray]]:
+        # TODO: Add this
+        return {}
 
 
 class Reshape(Layer):
@@ -136,10 +149,15 @@ class Reshape(Layer):
         self.input_shape = input_shape
         self.output_shape = output_shape
 
-    def forward(self, input_batch):
+    def forward(self, input_batch, training=True):
         batch_size = input_batch.shape[-1]
         return np.reshape(input_batch, (*self.output_shape, batch_size))
 
     def backward(self, output_gradient_batch):
         batch_size = output_gradient_batch.shape[-1]
         return np.reshape(output_gradient_batch, (*self.input_shape, batch_size))
+
+    @property
+    def params(self) -> dict[str, tuple[NDArray, NDArray]]:
+        # TODO: Add this
+        return {}

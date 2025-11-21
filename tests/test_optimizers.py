@@ -1,6 +1,7 @@
 import numpy as np
 import pytest
-from mpneuralnetwork.optimizers import SGD, RMSprop, Adam
+
+from mpneuralnetwork.optimizers import SGD, Adam, RMSprop
 
 
 class MockTrainableLayer:
@@ -8,6 +9,7 @@ class MockTrainableLayer:
     A mock layer with trainable parameters that exposes them via a `params` property,
     as expected by the refactored optimizers.
     """
+
     def __init__(self):
         self.weights = np.ones((10, 5))
         self.biases = np.ones((1, 5))
@@ -18,13 +20,14 @@ class MockTrainableLayer:
     def params(self):
         """Exposes parameters and their corresponding gradients."""
         return {
-            'weights': (self.weights, self.weights_gradient),
-            'biases': (self.biases, self.biases_gradient),
+            "weights": (self.weights, self.weights_gradient),
+            "biases": (self.biases, self.biases_gradient),
         }
 
 
 class MockNonTrainableLayer:
     """A mock layer with no trainable parameters, like an activation function."""
+
     pass
 
 
@@ -37,7 +40,7 @@ def test_sgd_with_momentum_updates_parameters():
     learning_rate = 0.1
     momentum = 0.9
     optimizer = SGD(learning_rate=learning_rate, momentum=momentum)
-    
+
     trainable_layer = MockTrainableLayer()
     layers_list = [trainable_layer]
 
@@ -55,7 +58,7 @@ def test_sgd_with_momentum_updates_parameters():
     velocity_w1 = -learning_rate * trainable_layer.weights_gradient
     expected_weights1 = original_weights + velocity_w1
     assert np.allclose(trainable_layer.weights, expected_weights1), "SGD with Momentum failed on weights (step 1)"
-    
+
     velocity_b1 = -learning_rate * trainable_layer.biases_gradient
     expected_biases1 = original_biases + velocity_b1
     assert np.allclose(trainable_layer.biases, expected_biases1), "SGD with Momentum failed on biases (step 1)"
@@ -69,7 +72,7 @@ def test_sgd_with_momentum_updates_parameters():
     velocity_w2 = momentum * velocity_w1 - learning_rate * trainable_layer.weights_gradient
     expected_weights2 = expected_weights1 + velocity_w2
     assert np.allclose(trainable_layer.weights, expected_weights2), "SGD with Momentum failed on weights (step 2)"
-    
+
     velocity_b2 = momentum * velocity_b1 - learning_rate * trainable_layer.biases_gradient
     expected_biases2 = expected_biases1 + velocity_b2
     assert np.allclose(trainable_layer.biases, expected_biases2), "SGD with Momentum failed on biases (step 2)"
@@ -98,10 +101,10 @@ def test_rmsprop_optimizer_updates_parameters():
     decay_rate = 0.9
     epsilon = 1e-8
     optimizer = RMSprop(learning_rate=learning_rate, decay_rate=decay_rate, epsilon=epsilon)
-    
+
     trainable_layer = MockTrainableLayer()
     layers_list = [trainable_layer]
-    
+
     original_weights = np.copy(trainable_layer.weights)
     grad_w = trainable_layer.weights_gradient
 
@@ -123,13 +126,13 @@ def test_adam_optimizer_updates_parameters():
     beta2 = 0.999
     epsilon = 1e-8
     optimizer = Adam(learning_rate=learning_rate, beta1=beta1, beta2=beta2, epsilon=epsilon)
-    
+
     trainable_layer = MockTrainableLayer()
     layers_list = [trainable_layer]
 
     original_weights = np.copy(trainable_layer.weights)
     grad_w = trainable_layer.weights_gradient
-    
+
     # 2. Act
     optimizer.step(layers_list)
 
@@ -142,4 +145,3 @@ def test_adam_optimizer_updates_parameters():
     v_hat_w = v_w / (1 - beta2**t)
     expected_weights = original_weights - learning_rate * m_hat_w / (np.sqrt(v_hat_w) + epsilon)
     assert np.allclose(trainable_layer.weights, expected_weights), "Adam did not update weights correctly"
-

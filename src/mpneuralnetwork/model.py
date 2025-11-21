@@ -1,17 +1,20 @@
 import numpy as np
+from numpy.typing import NDArray
 
-from .layers import Dense
-from .activations import Sigmoid, Softmax, ReLU, PReLU, Swish
-from .losses import MSE, BinaryCrossEntropy, CategoricalCrossEntropy
-from .optimizers import SGD
+from .activations import Activation, PReLU, ReLU, Sigmoid, Softmax, Swish
+from .layers import Dense, Layer, Lit_W
+from .losses import MSE, BinaryCrossEntropy, CategoricalCrossEntropy, Loss
+from .optimizers import SGD, Optimizer
 
 
 class Model:
-    def __init__(self, layers, loss, optimizer=SGD()):
-        self.layers = layers
-        self.loss = loss
-        self.optimizer = optimizer
-        self.output_activation = None
+    def __init__(self, layers: list[Layer], loss: Loss, optimizer: Optimizer | None = None) -> None:
+        self.layers: list[Layer] = layers
+        self.loss: Loss = loss
+        self.optimizer: Optimizer = SGD() if optimizer is None else optimizer
+        self.output_activation: Activation | Layer | None = None
+
+        self.task_type: str
 
         self._init_smart_weights()
         self._init_output_activation()
@@ -21,50 +24,53 @@ class Model:
         else:
             self.task_type = "classification"
 
-    def _init_smart_weights(self):
+    def _init_smart_weights(self) -> None:
         for i in range(len(self.layers)):
             layer = self.layers[i]
 
-            if isinstance(layer, (Dense)) and getattr(layer, 'initialization') == 'auto':
-                method = 'xavier'
+            if isinstance(layer, (Dense)) and layer.initialization == "auto":
+                method: Lit_W = "xavier"
 
                 if i + 1 < len(self.layers):
-                    next_layer = self.layers[i+1]
+                    next_layer = self.layers[i + 1]
 
                     if isinstance(next_layer, (ReLU, PReLU, Swish)):
-                        method = 'he'
+                        method = "he"
 
                 layer.init_weights(method)
 
-    def _init_output_activation(self):
+    def _init_output_activation(self) -> None:
         if isinstance(self.loss, BinaryCrossEntropy):
             self.output_activation = Sigmoid()
 
         elif isinstance(self.loss, CategoricalCrossEntropy):
             self.output_activation = Softmax()
 
+        if not self.output_activation:
+            return
+
         if isinstance(self.layers[len(self.layers) - 1], type(self.output_activation)):
             self.layers = self.layers[:-1]
 
-    def train(self, X_train, y_train, epochs, batch_size):
-        num_samples = X_train.shape[0]
-        num_batches = int(np.floor(num_samples / batch_size))
+    def train(self, X_train: NDArray, y_train: NDArray, epochs: int, batch_size: int) -> None:
+        num_samples: int = X_train.shape[0]
+        num_batches: int = int(np.floor(num_samples / batch_size))
 
         for epoch in range(epochs):
-            error = 0
-            accuracy = 0 if self.task_type != "regression" else None
+            error: float = 0
+            accuracy: float | None = 0 if self.task_type != "regression" else None
 
-            permutation = np.random.permutation(num_samples)
-            X_shuffled = X_train[permutation]
-            y_shuffled = y_train[permutation]
+            permutation: NDArray = np.random.permutation(num_samples)
+            X_shuffled: NDArray = X_train[permutation]
+            y_shuffled: NDArray = y_train[permutation]
 
             for i in range(num_batches):
-                start = i * batch_size
-                end = (i + 1) * batch_size
-                X_batch = X_shuffled[start:end]
-                y_batch = y_shuffled[start:end]
+                start: int = i * batch_size
+                end: int = (i + 1) * batch_size
+                X_batch: NDArray = X_shuffled[start:end]
+                y_batch: NDArray = y_shuffled[start:end]
 
-                predictions = X_batch
+                predictions: NDArray = X_batch
                 for layer in self.layers:
                     predictions = layer.forward(predictions)
 
@@ -72,15 +78,13 @@ class Model:
 
                 if accuracy is not None:
                     if y_batch.ndim == 2 and y_batch.shape[1] > 1:
-                        correct_predictions = np.sum(
-                            np.argmax(predictions, axis=1) == np.argmax(y_batch, axis=1)
-                        )
+                        correct_predictions = np.sum(np.argmax(predictions, axis=1) == np.argmax(y_batch, axis=1))
                         accuracy += correct_predictions
                     elif y_batch.ndim == 1:
                         pred_labels = (predictions > 0).astype(int)
                         accuracy += np.sum(pred_labels == y_batch)
 
-                grad = self.loss.prime(predictions, y_batch)
+                grad: NDArray = self.loss.prime(predictions, y_batch)
 
                 for layer in reversed(self.layers):
                     grad = layer.backward(grad)
@@ -92,23 +96,22 @@ class Model:
             if accuracy is not None:
                 total_samples = num_batches * batch_size
                 accuracy /= total_samples
-                print(f"Epoch {epoch + 1}/{epochs}      error={error:.4f}       accuracy={accuracy*100:.2f}%")
+                print(f"Epoch {epoch + 1}/{epochs}      error={error:.4f}       accuracy={accuracy * 100:.2f}%")
             else:
                 print(f"Epoch {epoch + 1}/{epochs}      error={error:.4f}")
 
-    def test(self, X_test, y_test):
-
-        logits = np.copy(X_test)
+    def test(self, X_test: NDArray, y_test: NDArray) -> None:
+        logits: NDArray = np.copy(X_test)
         for layer in self.layers:
             logits = layer.forward(logits, training=False)
 
-        error = self.loss.direct(logits, y_test)
+        error: float = self.loss.direct(logits, y_test)
 
-        predictions = logits
+        predictions: NDArray = logits
         if self.output_activation is not None:
             predictions = self.output_activation.forward(logits)
 
-        accuracy = None
+        accuracy: float | None = None
         if self.task_type != "regression":
             if y_test.ndim == 2 and y_test.shape[1] > 1:
                 accuracy = np.sum(np.argmax(predictions, axis=1) == np.argmax(y_test, axis=1)) / y_test.shape[0]
@@ -117,16 +120,16 @@ class Model:
                 accuracy = np.sum(pred_labels == y_test) / y_test.shape[0]
 
         if accuracy is not None:
-            print(f"Test Error: {error:.4f}, Test Accuracy: {accuracy*100:.2f}%")
+            print(f"Test Error: {error:.4f}, Test Accuracy: {accuracy * 100:.2f}%")
         else:
             print(f"Test Error: {error:.4f}")
 
-    def predict(self, input):
-        output = np.copy(input)
+    def predict(self, input: NDArray) -> NDArray:
+        output: NDArray = np.copy(input)
         for layer in self.layers:
             output = layer.forward(output, training=False)
 
         if self.output_activation is not None:
             output = self.output_activation.forward(output)
-        
+
         return output

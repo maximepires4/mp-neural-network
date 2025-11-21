@@ -1,9 +1,9 @@
 import numpy as np
-import pytest
-from mpneuralnetwork.model import Model
-from mpneuralnetwork.layers import Dense
+
 from mpneuralnetwork.activations import ReLU
+from mpneuralnetwork.layers import Dense
 from mpneuralnetwork.losses import MSE, BinaryCrossEntropy
+from mpneuralnetwork.model import Model
 from mpneuralnetwork.optimizers import SGD
 
 
@@ -12,7 +12,7 @@ def test_model_learns_on_simple_regression_task():
     Integration test: a simple model should be able to overfit a tiny regression dataset,
     demonstrating that the forward pass, backward pass, and optimizer work together.
     """
-    
+
     np.random.seed(69)
 
     # 1. Arrange: Create a simple dataset and model
@@ -21,7 +21,7 @@ def test_model_learns_on_simple_regression_task():
 
     layers = [Dense(2, 5), ReLU(), Dense(5, 1)]
     loss = MSE()
-    optimizer = SGD(learning_rate=0.1, momentum=0) # Using SGD with no momentum for simplicity
+    optimizer = SGD(learning_rate=0.1, momentum=0)  # Using SGD with no momentum for simplicity
     model = Model(layers=layers, loss=loss, optimizer=optimizer)
 
     # Calculate initial loss for comparison
@@ -52,7 +52,7 @@ def test_model_learns_on_binary_classification_task():
     y_train = np.array([[0], [1], [1], [0]])
 
     # The model does not need a final Sigmoid layer, as BinaryCrossEntropy loss expects raw logits.
-    layers = [Dense(2, 8, 'he'), ReLU(), Dense(8, 1, 'xavier')]
+    layers = [Dense(2, 8, "he"), ReLU(), Dense(8, 1, "xavier")]
     loss = BinaryCrossEntropy()
     optimizer = SGD()
     model = Model(layers=layers, loss=loss, optimizer=optimizer)
