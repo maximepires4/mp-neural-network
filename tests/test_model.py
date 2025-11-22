@@ -30,7 +30,7 @@ def test_model_learns_on_simple_regression_task():
     initial_loss = model.loss.direct(initial_preds, y_train)
 
     # 2. Act: Train the model for a number of epochs
-    model.train(X_train, y_train, epochs=100, batch_size=1)
+    model.train(X_train, y_train, epochs=100, batch_size=1, auto_evaluation=0)
 
     # 3. Assert: The final loss should be significantly lower than the
     final_preds = model.predict(X_train)
@@ -63,7 +63,7 @@ def test_model_learns_on_binary_classification_task():
     initial_loss = model.loss.direct(initial_preds_logits, y_train)
 
     # 2. Act: Train the model
-    model.train(X_train, y_train, epochs=1000, batch_size=4)
+    model.train(X_train, y_train, epochs=1000, batch_size=4, auto_evaluation=0)
 
     # 3. Assert: Loss should decrease and accuracy should be high
     final_probas = model.predict(X_train)

@@ -80,6 +80,8 @@ class Model:
         batch_size: int,
         evaluation: tuple[NDArray, NDArray] | None = None,
         auto_evaluation: float = 0.2,
+        early_stopping: int | None = None,
+        model_checkpoint: bool = True,
     ) -> None:
         X_copy = np.copy(X_train)
         y_copy = np.copy(y_train)
@@ -92,6 +94,11 @@ class Model:
 
         num_samples: int = X_copy.shape[0]
         num_batches: int = int(np.floor(num_samples / batch_size))
+
+        early_stopping = early_stopping if early_stopping else epochs + 1
+        patience: int = early_stopping
+        best_error: float = float("inf")
+        best_weights: dict | None = None
 
         for epoch in range(epochs):
             error: float = 0
@@ -130,12 +137,35 @@ class Model:
             if evaluation is not None:
                 _, (val_error, val_accuracy) = self.evaluate(evaluation[0], evaluation[1], training=False)
 
+                if val_error < best_error:
+                    best_error = val_error
+                    patience = early_stopping
+                    if model_checkpoint:
+                        best_weights = self._deepcopy()
+                else:
+                    patience -= 1
+
                 message += f"   |   val_error = {val_error:.4f}"
 
                 if val_accuracy is not None:
                     message += f"   val_accuracy = {100 * val_accuracy:.2f}%"
 
+            elif error < best_error:
+                best_error = error
+                patience = early_stopping
+                if model_checkpoint:
+                    best_weights = self._deepcopy()
+            else:
+                patience -= 1
+
             print(message)
+
+            if patience == 0:
+                print(f"EARLY STOPPING - Model did not learn since {early_stopping} epochs")
+                break
+
+        if model_checkpoint and best_weights is not None:
+            Model._restore_weights(self, best_weights)
 
     def evaluate(self, X: NDArray, y: NDArray, training=False) -> tuple[NDArray, tuple[float, float | None]]:
         logits: NDArray = np.copy(X)
@@ -165,6 +195,25 @@ class Model:
             print(f"test_error = {error:.4f}   test_accuracy = {accuracy * 100:.2f}%")
         else:
             print(f"test error = {error:.4f}")
+
+    def _deepcopy(self, optimizer_params: dict | None = None) -> dict:
+        weights_dict: dict = {}
+        for i, layer in enumerate(self.layers):
+            if hasattr(layer, "params"):
+                for l_param_name, (l_param, _) in layer.params.items():
+                    p_id: int = id(l_param)
+                    logical_name: str = f"layer_{i}_{l_param_name}"
+
+                    weights_dict[logical_name] = np.copy(l_param)
+
+                    if not optimizer_params:
+                        continue
+
+                    for o_param_name, o_param in optimizer_params.items():
+                        if p_id in o_param:
+                            weights_dict[f"optimizer_{o_param_name}_{logical_name}"] = np.copy(o_param[p_id])
+
+        return weights_dict
 
     def predict(self, input: NDArray) -> NDArray:
         output: NDArray = np.copy(input)
@@ -197,18 +246,7 @@ class Model:
             "optimizer_globals": optimizer_globals,
         }
 
-        weights_dict: dict = {}
-        for i, layer in enumerate(self.layers):
-            if hasattr(layer, "params"):
-                for l_param_name, (l_param, _) in layer.params.items():
-                    p_id: int = id(l_param)
-                    logical_name: str = f"layer_{i}_{l_param_name}"
-
-                    weights_dict[logical_name] = l_param
-
-                    for o_param_name, o_param in optimizer_params.items():
-                        if p_id in o_param:
-                            weights_dict[f"optimizer_{o_param_name}_{logical_name}"] = o_param[p_id]
+        weights_dict: dict = self._deepcopy(optimizer_params)
 
         if filepath[-4:] != ".npz":
             filepath = f"{filepath}.npz"
@@ -297,24 +335,32 @@ class Model:
                 setattr(optimizer, param_name, param)
 
         model = Model(layers, loss, optimizer)
+        Model._restore_weights(model, data, optimizer)
 
+        return model
+
+    @staticmethod
+    def _restore_weights(model, weights_dict: dict, optimizer: Optimizer | None = None) -> None:
         for i, layer in enumerate(model.layers):
             if hasattr(layer, "params"):
                 for l_param_name, (_, _) in layer.params.items():
                     logical_name = f"layer_{i}_{l_param_name}"
 
-                    if logical_name in data:
-                        setattr(layer, l_param_name, data[logical_name])
+                    if logical_name in weights_dict:
+                        current_param = getattr(layer, l_param_name)
+                        np.copyto(current_param, weights_dict[logical_name])
 
-                        new_param_val = getattr(layer, l_param_name)
-                        p_id = id(new_param_val)
+                        p_id = id(current_param)
+
+                        if not optimizer:
+                            continue
 
                         for o_param_name, o_param in optimizer.params.items():
                             if not isinstance(o_param, dict):
                                 continue
 
                             key = f"optimizer_{o_param_name}_{logical_name}"
-                            if key in data:
-                                o_param[p_id] = data[key]
-
-        return model
+                            if key in weights_dict:
+                                if p_id not in o_param:
+                                    o_param[p_id] = np.zeros_like(current_param)
+                                np.copyto(o_param[p_id], weights_dict[key])
