@@ -3,6 +3,8 @@ from abc import abstractmethod
 import numpy as np
 from numpy.typing import NDArray
 
+from .activations import Sigmoid, Softmax
+
 
 class Loss:
     @abstractmethod
@@ -27,32 +29,29 @@ class MSE(Loss):
 
 
 class BinaryCrossEntropy(Loss):
-    def _sigmoid(self, x):
-        return 1 / (1 + np.exp(-x))
+    def __init__(self) -> None:
+        self.sigmoid = Sigmoid()
 
     def direct(self, output: NDArray, output_expected: NDArray) -> float:
         loss_per_element = np.maximum(output, 0) - output * output_expected + np.log(1 + np.exp(-np.abs(output)))
         return float(np.mean(np.sum(loss_per_element, axis=1)))
 
     def prime(self, output: NDArray, output_expected: NDArray) -> NDArray:
-        predictions = self._sigmoid(output)
+        predictions = self.sigmoid.forward(output)
         grad: NDArray = (predictions - output_expected) / output.shape[0]
         return grad
 
 
 class CategoricalCrossEntropy(Loss):
-    def _softmax(self, x):
-        m = np.max(x, axis=1, keepdims=True)
-        e = np.exp(x - m)
-        self.output = e / np.sum(e, axis=1, keepdims=True)
-        return self.output
+    def __init__(self) -> None:
+        self.softmax = Softmax()
 
     def direct(self, output: NDArray, output_expected: NDArray) -> float:
         epsilon = 1e-9
-        predictions = self._softmax(output)
+        predictions = self.softmax.forward(output)
         return float(np.mean(-np.sum(output_expected * np.log(predictions + epsilon), axis=1)))
 
     def prime(self, output: NDArray, output_expected: NDArray) -> NDArray:
-        predictions = self._softmax(output)
+        predictions = self.softmax.forward(output)
         grad: NDArray = (predictions - output_expected) / output.shape[0]
         return grad

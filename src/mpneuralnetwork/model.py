@@ -89,8 +89,8 @@ class Model:
         if evaluation is None and auto_evaluation != 0:
             split_i = int(len(X_train) * auto_evaluation)
 
-            X_copy, y_copy = X_train[:split_i], y_train[:split_i]
-            evaluation = (X_train[split_i:], y_train[split_i:])
+            X_copy, y_copy = X_train[:-split_i], y_train[:-split_i]
+            evaluation = (X_train[-split_i:], y_train[-split_i:])
 
         num_samples: int = X_copy.shape[0]
         num_batches: int = int(np.floor(num_samples / batch_size))
