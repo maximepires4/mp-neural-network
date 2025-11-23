@@ -193,3 +193,17 @@ def test_activation_output_shapes(activation_class, activation_args):
 
     # 3. Assert
     assert output.shape == input_shape, f"Shape mismatch for activation {activation_class.__name__}. Input: {input_shape}, Output: {output.shape}"
+
+
+def test_prelu_config():
+    """Test get_config for PReLU."""
+    prelu = PReLU(alpha=0.25)
+    config = prelu.get_config()
+    assert config["alpha"] == 0.25
+    assert config["type"] == "PReLU"
+
+
+def test_softmax_params():
+    """Test params property for Softmax."""
+    softmax = Softmax()
+    assert softmax.params == {}

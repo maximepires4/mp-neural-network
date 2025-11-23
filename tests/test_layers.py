@@ -1,10 +1,45 @@
 import numpy as np
 import pytest
 
-from mpneuralnetwork.layers import Dense, Dropout
+from mpneuralnetwork.layers import Dense, Dropout, Layer
 from mpneuralnetwork.losses import MSE
 
 np.random.seed(69)  # For reproducible test data in parametrization
+
+
+def test_layer_base_methods():
+    """Test get_config and build for layers."""
+    layer = Layer()
+    assert layer.get_config() == {"type": "Layer"}
+    layer.build(10)
+    assert layer.input_size == 10
+    assert layer.output_size == 10
+    assert layer.params == {}
+
+
+def test_dense_config():
+    """Test get_config for Dense layer."""
+    dense = Dense(10, input_size=5, initialization="he")
+    config = dense.get_config()
+    assert config["output_size"] == 10
+    assert config["input_size"] == 5
+    assert config["initialization"] == "he"
+    assert config["type"] == "Dense"
+
+
+def test_dropout_config_and_inference():
+    """Test get_config and inference behavior for Dropout."""
+    dropout = Dropout(probability=0.3)
+    config = dropout.get_config()
+    assert config["probability"] == 0.3
+    assert config["type"] == "Dropout"
+
+    # Test inference
+    dropout_inf = Dropout(0.5)
+    x = np.ones((5, 5))
+    # During inference (training=False), output should equal input
+    out = dropout_inf.forward(x, training=False)
+    assert np.array_equal(out, x)
 
 
 @pytest.mark.parametrize(

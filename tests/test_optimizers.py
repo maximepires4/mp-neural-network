@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from mpneuralnetwork.optimizers import SGD, Adam, RMSprop
+from mpneuralnetwork.optimizers import SGD, Adam, Optimizer, RMSprop
 
 
 class MockTrainableLayer:
@@ -145,3 +145,41 @@ def test_adam_optimizer_updates_parameters():
     v_hat_w = v_w / (1 - beta2**t)
     expected_weights = original_weights - learning_rate * m_hat_w / (np.sqrt(v_hat_w) + epsilon)
     assert np.allclose(trainable_layer.weights, expected_weights), "Adam did not update weights correctly"
+
+
+def test_optimizer_base_methods():
+    """Test get_config and params for base Optimizer."""
+    opt = Optimizer()
+    assert opt.get_config() == {"type": "Optimizer"}
+    assert opt.params == {}
+    opt.step([])  # Should do nothing
+
+
+def test_optimizer_configs():
+    """Test get_config and params for concrete optimizers."""
+    # SGD
+    sgd = SGD(learning_rate=0.1, momentum=0.5)
+    config = sgd.get_config()
+    assert config["learning_rate"] == 0.1
+    assert config["momentum"] == 0.5
+    assert "velocities" in sgd.params
+
+    # RMSprop
+    rms = RMSprop(learning_rate=0.02, decay_rate=0.8, epsilon=1e-7)
+    config = rms.get_config()
+    assert config["learning_rate"] == 0.02
+    assert config["decay_rate"] == 0.8
+    assert config["epsilon"] == 1e-7
+    assert "cache" in rms.params
+
+    # Adam
+    adam = Adam(learning_rate=0.03, beta1=0.8, beta2=0.9, epsilon=1e-6)
+    config = adam.get_config()
+    assert config["learning_rate"] == 0.03
+    assert config["beta1"] == 0.8
+    assert config["beta2"] == 0.9
+    assert config["epsilon"] == 1e-6
+    params = adam.params
+    assert "t" in params
+    assert "momentums" in params
+    assert "velocities" in params

@@ -1,7 +1,27 @@
 import numpy as np
 import pytest
 
-from mpneuralnetwork.losses import MSE, BinaryCrossEntropy, CategoricalCrossEntropy
+from mpneuralnetwork.losses import MSE, BinaryCrossEntropy, CategoricalCrossEntropy, Loss
+
+
+def test_loss_configs():
+    """Test get_config for losses."""
+
+    # Base Loss (using a concrete mock implementation)
+    class MockLoss(Loss):
+        def direct(self, o, e):
+            pass
+
+        def prime(self, o, e):
+            pass
+
+    loss = MockLoss()
+    assert loss.get_config() == {"type": "MockLoss"}
+
+    # MSE
+    mse = MSE()
+    assert mse.get_config() == {"type": "MSE"}
+
 
 # --- Test Cases ---
 # Each tuple contains: (loss_class, y_pred, y_true, expected_loss, expected_prime)

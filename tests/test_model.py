@@ -1,9 +1,9 @@
 import numpy as np
 import pytest
 
-from mpneuralnetwork.activations import ReLU
+from mpneuralnetwork.activations import ReLU, Softmax
 from mpneuralnetwork.layers import Dense
-from mpneuralnetwork.losses import MSE, BinaryCrossEntropy
+from mpneuralnetwork.losses import MSE, BinaryCrossEntropy, CategoricalCrossEntropy
 from mpneuralnetwork.model import Model
 from mpneuralnetwork.optimizers import SGD, Adam, RMSprop
 
@@ -211,3 +211,55 @@ def test_smart_weight_initialization():
     actual_std_forced = np.std(weights_forced)
 
     assert np.isclose(actual_std_forced, expected_std_xavier, rtol=0.05), "Manual initialization override was ignored."
+
+
+def test_model_duplicate_activation_removal():
+    """
+    Test that if the last layer matches the implicit output activation of the loss,
+    it is removed to avoid double activation.
+    """
+    # CCE implies Softmax output activation
+    # If we manually add Softmax, it should be removed from self.layers
+    # and handled by self.output_activation
+    layers = [Dense(10, input_size=5), Softmax()]
+    loss = CategoricalCrossEntropy()
+
+    model = Model(layers, loss)
+
+    # The model should have popped the last layer
+    # (Softmax is removed from layers list because it's handled by CCE's output_activation logic)
+    assert len(model.layers) == 1
+    assert isinstance(model.output_activation, Softmax)
+
+
+def test_model_validation_and_early_stopping():
+    """
+    Test validation loop and early stopping logic.
+    """
+    np.random.seed(42)
+    X_train = np.random.randn(20, 2)
+    y_train = np.random.randn(20, 1)
+
+    X_val = np.random.randn(5, 2)
+    y_val = np.random.randn(5, 1)
+
+    layers = [Dense(5, input_size=2), Dense(1)]
+    loss = MSE()
+    optimizer = SGD(learning_rate=0.01)
+    model = Model(layers, loss, optimizer)
+
+    # Train with validation data provided manually
+    # Set early_stopping to 2 epochs to test stopping logic
+    model.train(
+        X_train,
+        y_train,
+        epochs=5,
+        batch_size=5,
+        evaluation=(X_val, y_val),
+        early_stopping=2,
+        auto_evaluation=0,  # Disable auto split since we provide eval
+    )
+
+    # Test auto_evaluation split logic
+    model2 = Model([Dense(5, input_size=2), Dense(1)], MSE())
+    model2.train(X_train, y_train, epochs=2, batch_size=5, auto_evaluation=0.2)
