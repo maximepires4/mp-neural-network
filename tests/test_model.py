@@ -164,3 +164,50 @@ def test_optimizer_convergence(optimizer_class):
     final_loss = model.loss.direct(preds, y_train)
 
     assert final_loss < 0.1, f"{optimizer_class.__name__} failed to converge on simple regression."
+
+
+def test_smart_weight_initialization():
+    """
+    Tests that the model automatically selects the correct weight initialization method
+    based on the activation function following a Dense layer.
+    """
+    # 1. Case: Dense -> ReLU (Should use 'he')
+    # We need to mock init_weights to verify the call arguments,
+    # but since we can't easily mock internal methods without external libs,
+    # we will inspect the std deviation of the weights which is a proxy for the method.
+    # He: std = sqrt(2/input), Xavier: std = sqrt(1/input)
+
+    input_size = 1000
+    output_size = 1000
+
+    # --- Test Auto: He (Dense -> ReLU) ---
+    layers_he = [Dense(output_size, input_size=input_size, initialization="auto"), ReLU()]
+    Model(layers_he, MSE(), SGD())
+    weights_he = layers_he[0].weights
+    expected_std_he = np.sqrt(2.0 / input_size)
+    actual_std_he = np.std(weights_he)
+
+    # Allow small margin of error for random sampling
+    assert np.isclose(actual_std_he, expected_std_he, rtol=0.05), (
+        f"Auto-init failed. Expected 'he' (std={expected_std_he:.4f}), got std={actual_std_he:.4f}"
+    )
+
+    # --- Test Auto: Xavier (Dense -> Sigmoid/None) ---
+    layers_xavier = [Dense(output_size, input_size=input_size, initialization="auto")]
+    Model(layers_xavier, MSE(), SGD())
+    weights_xavier = layers_xavier[0].weights
+    expected_std_xavier = np.sqrt(1.0 / input_size)
+    actual_std_xavier = np.std(weights_xavier)
+
+    assert np.isclose(actual_std_xavier, expected_std_xavier, rtol=0.05), (
+        f"Auto-init failed. Expected 'xavier' (std={expected_std_xavier:.4f}), got std={actual_std_xavier:.4f}"
+    )
+
+    # --- Test Manual Override ---
+    # Force Xavier on ReLU (normally He)
+    layers_forced = [Dense(output_size, input_size=input_size, initialization="xavier"), ReLU()]
+    Model(layers_forced, MSE(), SGD())
+    weights_forced = layers_forced[0].weights
+    actual_std_forced = np.std(weights_forced)
+
+    assert np.isclose(actual_std_forced, expected_std_xavier, rtol=0.05), "Manual initialization override was ignored."

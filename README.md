@@ -1,8 +1,13 @@
+<p align="center">
+  <img src="images/logo.svg" alt="MPNeuralNetwork Logo" width="900"/>
+</p>
+
 # **MPNeuralNetwork 🧠**
 
 [![PyPI version](https://badge.fury.io/py/mpneuralnetwork.svg)](https://badge.fury.io/py/mpneuralnetwork)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue?style=flat-square&logo=python&logoColor=white)
 ![Build Status](https://img.shields.io/badge/build-passing-brightgreen?style=flat-square)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **A fully vectorized Deep Learning framework built from scratch using only NumPy.**
 
@@ -19,39 +24,43 @@ By rebuilding the engine from the ground up, I aimed to bridge the gap between t
 2. **Performance Optimization:** Moving from naive scalar loops to **fully vectorized matrix operations** (Batch Processing) to significantly accelerate training times.
 3. **Software Architecture:** Applying **SOLID principles** to decouple Layers, Optimizers, and Loss functions for a modular design.
 
-## **Key Features**
+## **Key Features: Smart & Efficient**
 
-This library handles numerical stability, batch processing, and intelligent defaults.
+MPNeuralNetwork goes beyond basic matrix operations by incorporating an **"intelligent" engine** that automates Deep Learning best practices.
 
-* **Vectorized Engine:** All forward and backward passes are optimized for mini-batch processing using NumPy broadcasting.
-* **Smart Initialization:** The model automatically detects the activation function following a Dense layer and applies the optimal initialization strategy (**He** for ReLU, **Xavier** for Sigmoid/Tanh).
-* **Auto-Activation:** For classification tasks, the model automatically applies the correct output activation (Softmax for Multi-class, Sigmoid for Binary) during prediction, ensuring numerical stability during training (Logits).
-* **Modular Optimizers:** The optimization logic is strictly decoupled from the layer logic, allowing for stateful optimizers like Adam or RMSprop.
+* **Fully Vectorized:** Optimized for batch processing using NumPy broadcasting for maximum performance.
+* **Early Stopping & Checkpointing:** The training loop automatically monitors validation performance. It stops training early if the model stops learning and **automatically restores the best weights** found during training, ensuring you always get the most generalized model.
+* **Intelligent Weight Initialization:** The model analyzes your network architecture (specifically the activation functions) and automatically applies the optimal initialization strategy (**He Initialization** for ReLU, **Xavier/Glorot** for Sigmoid/Tanh), removing the guesswork.
+* **Numerical Stability (Auto-Logits):** The framework detects classification tasks and internally handles logits for `Softmax` or `Sigmoid`, preventing numerical overflow/underflow issues common in naive implementations.
+* **Auto-Validation Split:** Simply pass `auto_evaluation=0.2` to automatically set aside 20% of your data for validation, without manual array slicing.
+* **Full Serialization:** Save and load your entire model state (weights, architecture, optimizer momentum) to resume training later.
 
 ## **Implemented Components**
 
 | Component | Details |
 | :---- | :---- |
-| **Layers** | Dense, Convolutional, Dropout, Reshape |
-| **Activations** | ReLU, Sigmoid, Tanh, Softmax, PReLU, Swish |
-| **Loss Functions** | MSE (Regression), BinaryCrossEntropy, CategoricalCrossEntropy (Logits optimized) |
-| **Optimizers** | SGD (with Momentum), RMSprop, Adam |
+| **Layers** | `Dense`, `Convolutional` (Conv2D), `Dropout`, `Reshape` |
+| **Activations** | `ReLU`, `Sigmoid`, `Tanh`, `Softmax`, `PReLU`, `Swish` |
+| **Loss Functions** | `MSE` (Regression), `BinaryCrossEntropy`, `CategoricalCrossEntropy` (Logits optimized) |
+| **Optimizers** | `SGD` (with Momentum), `RMSprop`, `Adam` |
 
 ## **Installation**
 
 You can install the package directly from PyPI:
 
-```
+```bash
 pip install mpneuralnetwork
 ```
 
 Or clone the repository to work on the source code.
 
-## **Usage Example**
+## **Usage Examples**
 
-The API is designed to be declarative and intuitive. Here is how to solve the classic MNIST digit classification problem using the "Smart API":
+### **1. Classic MNIST Classification (MLP)**
 
-```
+The API is designed to be declarative and intuitive.
+
+```python
 import numpy as np
 from mpneuralnetwork.layers import Dense, Dropout
 from mpneuralnetwork.activations import ReLU
@@ -60,7 +69,7 @@ from mpneuralnetwork.optimizers import Adam
 from mpneuralnetwork.model import Model
 
 # 1. Define the Architecture
-# Note: We use 'auto' initialization and NO final Softmax layer.
+# Note: We use 'auto' initialization and NO final Softmax layer (handled by loss).
 network = [
     Dense(784, 128, initialization='auto'), # Automatically uses He init
     ReLU(),
@@ -69,21 +78,64 @@ network = [
 ]
 
 # 2. Initialize the Model
-# The model detects CategoricalCrossEntropy and will automatically:
-# - Use Softmax for predictions
-# - Use raw Logits for stable training
 model = Model(
     layers=network,
     loss=CategoricalCrossEntropy(),
     optimizer=Adam(learning_rate=0.001)
 )
 
-# 3. Train (Vectorized)
-model.train(X_train, y_train, epochs=10, batch_size=32)
+# 3. Train (Vectorized) with Auto-Evaluation
+# - Splits 20% of data for validation
+# - Stops if validation loss doesn't improve for 5 epochs
+# - Saves the best model state automatically
+model.train(
+    X_train, y_train,
+    epochs=50,
+    batch_size=32,
+    auto_evaluation=0.2,
+    early_stopping=5
+)
 
 # 4. Predict
 # Returns probabilities (Softmax applied automatically)
 predictions = model.predict(X_test)
+```
+
+### **2. Convolutional Neural Network (CNN)**
+
+Support for 2D Convolutions for image processing tasks.
+
+```python
+from mpneuralnetwork.layers import Convolutional, Reshape, Dense
+from mpneuralnetwork.activations import ReLU, Softmax
+
+cnn_network = [
+    # Input: (Batch, 1, 28, 28) -> Output: (Batch, 32, 26, 26)
+    Convolutional(input_shape=(1, 28, 28), kernels_count=32, kernel_size=3),
+    ReLU(),
+
+    # Flatten: (Batch, 32 * 26 * 26)
+    Reshape((-1, 32 * 26 * 26)),
+
+    Dense(32 * 26 * 26, 100),
+    ReLU(),
+    Dense(100, 10)
+]
+
+model = Model(layers=cnn_network, ...)
+```
+
+### **3. Saving & Loading Models**
+
+You can save the entire model state (weights, architecture, optimizer config) and reload it later.
+
+```python
+# Save
+model.save("my_model") # Creates my_model.npz
+
+# Load
+loaded_model = Model.load("my_model")
+loaded_model.predict(X_test)
 ```
 
 ## **Architecture & Design Decisions**
@@ -92,17 +144,17 @@ predictions = model.predict(X_test)
 
 Early versions of the library used loops to iterate over samples one by one. This was identified as a major bottleneck.
 
-* **Refactoring:** I completely rewrote the main training loop (Model.train) and the forward/backward methods of all layers to handle 3D/2D tensors of shape (batch\_size, features).
-* **Result:** On the MNIST dataset, training time for 10 epochs dropped from **452s to 119s** (\~4x speedup).
+* **Refactoring:** I completely rewrote the main training loop (`Model.train`) and the forward/backward methods of all layers to handle 3D/2D tensors of shape `(batch_size, features)`.
+* **Result:** On the MNIST dataset, training time for 10 epochs dropped from **452s to 119s** (~4x speedup).
 
 ### **2\. Decoupling Layers & Optimizers (SRP)**
 
 To avoid "God Classes", I strictly separated the responsibility of **calculating gradients** from **updating parameters**. Layers expose their trainable parameters via a generic params property.
 
-* **The Layer's Job:** It computes dE/dW (gradient) during the backward pass.
-* **The Optimizer's Job:** The Optimizer class iterates over the layers, retrieves parameters via layer.params, and applies the update rule (keeping track of momentum/velocity if needed).
+* **The Layer's Job:** It computes `dE/dW` (gradient) during the backward pass.
+* **The Optimizer's Job:** The Optimizer class iterates over the layers, retrieves parameters via `layer.params`, and applies the update rule (keeping track of momentum/velocity if needed).
 
-```
+```python
 # Simplified logic from optimizers.py
 class SGD(Optimizer):
     def step(self, layers):
@@ -122,8 +174,11 @@ class SGD(Optimizer):
 * [x] **Advanced Optimizers:** Adam, RMSprop, SGD Momentum.
 * [x] **Smart Initialization:** Auto He/Xavier.
 * [x] **Regularization:** Dropout Layer.
-* [ ] **Convolutional Optimization:** Implementation of im2col for faster CNNs.
-* [ ] **Model Serialization:** Saving/Loading weights to JSON/Pickle.
+* [x] **Convolutional Layers:** Conv2D implementation.
+* [x] **Model Serialization:** Saving/Loading weights to JSON/Pickle.
+* [x] **Training Utils:** Early Stopping, Checkpointing.
+* [ ] **Pooling Layers:** MaxPool / AvgPool.
+* [ ] **Convolutional Optimization:** Implementation of `im2col` for faster CNNs.
 
 ## **Author**
 
