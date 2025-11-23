@@ -1,5 +1,6 @@
 import json
 from collections.abc import Callable
+from pathlib import Path
 
 import numpy as np
 from numpy.typing import NDArray
@@ -285,7 +286,9 @@ class Model:
     }
 
     @staticmethod
-    def load(filepath: str) -> "Model":
+    def load(path: str | Path) -> "Model":
+        filepath: str = str(path) if isinstance(path, Path) else path
+
         if filepath[-4:] != ".npz":
             filepath = f"{filepath}.npz"
 
