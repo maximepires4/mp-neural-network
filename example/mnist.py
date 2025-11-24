@@ -9,6 +9,7 @@ from mpneuralnetwork.layers import Dense, Dropout
 from mpneuralnetwork.losses import CategoricalCrossEntropy
 from mpneuralnetwork.model import Model
 from mpneuralnetwork.optimizers import Adam
+from mpneuralnetwork.serialization import save_model
 
 if __name__ == "__main__":
     print("Classification example: MNIST Dataset")
@@ -32,5 +33,5 @@ if __name__ == "__main__":
 
     Path("output/").mkdir(parents=True, exist_ok=True)
 
-    model.save("output/mnist_model.npz")
+    save_model(model, "output/mnist_model.npz")
     print("Model saved to output/mnist_model.npz")

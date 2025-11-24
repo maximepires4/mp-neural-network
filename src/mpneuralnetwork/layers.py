@@ -10,6 +10,7 @@ Lit_W = Literal["auto", "he", "xavier"]
 
 class Layer:
     def __init__(self) -> None:
+        # TODO: Call super for setting `input_size` so that every layer can be a first layer
         self.input: NDArray
         self.output: NDArray
         self.input_size: int
@@ -35,6 +36,17 @@ class Layer:
     @property
     def params(self) -> dict[str, tuple[NDArray, NDArray]]:
         return {}
+
+    def load_params(self, params: dict[str, NDArray]) -> None:
+        pass
+
+    @property
+    def state(self) -> dict[str, NDArray]:
+        return {}
+
+    @state.setter
+    def state(self, state: dict[str, NDArray]) -> None:
+        pass
 
 
 class Dense(Layer):
@@ -95,6 +107,10 @@ class Dense(Layer):
             "weights": (self.weights, self.weights_gradient),
             "biases": (self.biases, self.biases_gradient),
         }
+
+    def load_params(self, params: dict[str, NDArray]) -> None:
+        self.weights = params["weights"]
+        self.biases = params["biases"]
 
 
 class Dropout(Layer):
@@ -194,6 +210,19 @@ class BatchNormalization(Layer):
     @property
     def params(self) -> dict[str, tuple[NDArray, NDArray]]:
         return {"gamma": (self.gamma, self.gamma_gradient), "beta": (self.beta, self.beta_gradient)}
+
+    def load_params(self, params: dict[str, NDArray]) -> None:
+        self.gamma = params["gamma"]
+        self.beta = params["beta"]
+
+    @property
+    def state(self) -> dict[str, NDArray]:
+        return {"cache_m": self.cache_m, "cache_v": self.cache_v}
+
+    @state.setter
+    def state(self, state: dict[str, NDArray]) -> None:
+        self.cache_m = state["cache_m"]
+        self.cache_v = state["cache_v"]
 
 
 class Convolutional(Layer):

@@ -8,6 +8,7 @@ from mpneuralnetwork.layers import BatchNormalization, Dense, Dropout
 from mpneuralnetwork.losses import MSE
 from mpneuralnetwork.model import Model
 from mpneuralnetwork.optimizers import Adam
+from mpneuralnetwork.serialization import save_model
 
 if __name__ == "__main__":
     print("Regression example: California Housing Dataset")
@@ -55,5 +56,5 @@ if __name__ == "__main__":
     model.test(X_test, y_test)
 
     Path("output/").mkdir(parents=True, exist_ok=True)
-    model.save("output/california_model.npz")
+    save_model(model, "output/california_model.npz")
     print("Model saved to output/california_model.npz")

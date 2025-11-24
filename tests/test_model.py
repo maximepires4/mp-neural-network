@@ -6,6 +6,7 @@ from mpneuralnetwork.layers import Dense
 from mpneuralnetwork.losses import MSE, BinaryCrossEntropy, CategoricalCrossEntropy
 from mpneuralnetwork.model import Model
 from mpneuralnetwork.optimizers import SGD, Adam, RMSprop
+from mpneuralnetwork.serialization import load_model, save_model
 
 
 def test_model_learns_on_simple_regression_task():
@@ -106,10 +107,10 @@ def test_model_save_and_load(tmp_path):
 
     # 3. Save
     save_path = tmp_path / "test_model.npz"
-    model.save(str(save_path))
+    save_model(model, str(save_path))
 
     # 4. Load
-    loaded_model = Model.load(str(save_path))
+    loaded_model = load_model(str(save_path))
 
     # 5. Verify Weights & Biases
     loaded_weights = [layer.weights for layer in loaded_model.layers if hasattr(layer, "weights")]

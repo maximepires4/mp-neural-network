@@ -1,14 +1,10 @@
-import json
-from collections.abc import Callable
-from pathlib import Path
-
 import numpy as np
 from numpy.typing import NDArray
 
-from .activations import Activation, PReLU, ReLU, Sigmoid, Softmax, Swish, Tanh
-from .layers import BatchNormalization, Convolutional, Dense, Dropout, Layer, Lit_W, Reshape
+from .activations import Activation, PReLU, ReLU, Sigmoid, Softmax, Swish
+from .layers import BatchNormalization, Dense, Dropout, Layer, Lit_W
 from .losses import MSE, BinaryCrossEntropy, CategoricalCrossEntropy, Loss
-from .optimizers import SGD, Adam, Optimizer, RMSprop
+from .optimizers import SGD, Optimizer
 
 
 class Model:
@@ -150,7 +146,7 @@ class Model:
                     best_error = val_error
                     patience = early_stopping
                     if model_checkpoint:
-                        best_weights = self._deepcopy()
+                        best_weights = self.get_weights()
                 else:
                     patience -= 1
 
@@ -165,7 +161,7 @@ class Model:
                 best_error = error
                 patience = early_stopping
                 if model_checkpoint:
-                    best_weights = self._deepcopy()
+                    best_weights = self.get_weights()
             else:
                 patience -= 1
 
@@ -176,7 +172,7 @@ class Model:
                 break
 
         if model_checkpoint and best_weights is not None:
-            Model._restore_weights(self, best_weights)
+            self.restore_weights(best_weights)
             print(f"MODEL CHECKPOINT: {best_error}")
             # TODO: Inform user
 
@@ -209,7 +205,17 @@ class Model:
         else:
             print(f"test error = {error:.4f}   test rmse = {np.sqrt(error):.4f}")
 
-    def _deepcopy(self, optimizer_params: dict | None = None) -> dict:
+    def predict(self, input: NDArray) -> NDArray:
+        output: NDArray = np.copy(input)
+        for layer in self.layers:
+            output = layer.forward(output, training=False)
+
+        if self.output_activation is not None:
+            output = self.output_activation.forward(output)
+
+        return output
+
+    def get_weights(self, optimizer_params: dict | None = None) -> dict:
         weights_dict: dict = {}
         for i, layer in enumerate(self.layers):
             if hasattr(layer, "params"):
@@ -226,157 +232,45 @@ class Model:
                         if p_id in o_param:
                             weights_dict[f"optimizer_{o_param_name}_{logical_name}"] = np.copy(o_param[p_id])
 
+            if hasattr(layer, "state"):
+                for l_state_name, l_state_val in layer.state.items():
+                    logical_name = f"layer_{i}_state_{l_state_name}"
+                    weights_dict[logical_name] = np.copy(l_state_val)
+
         return weights_dict
 
-    def predict(self, input: NDArray) -> NDArray:
-        output: NDArray = np.copy(input)
-        for layer in self.layers:
-            output = layer.forward(output, training=False)
-
-        if self.output_activation is not None:
-            output = self.output_activation.forward(output)
-
-        return output
-
-    def save(self, filepath: str) -> None:
-        layers_config: list = []
-        for layer in self.layers:
-            layers_config.append(layer.get_config())
-
-        optimizer_globals: dict = {}
-        optimizer_params: dict = {}
-
-        if self.optimizer.params:
-            for param_name, param in self.optimizer.params.items():
-                if isinstance(param, (int, float, str, bool)) or param is None:
-                    optimizer_globals[param_name] = param
-                else:
-                    optimizer_params[param_name] = param
-
-        model_config: dict = {
-            "loss": self.loss.get_config(),
-            "optimizer": self.optimizer.get_config(),
-            "optimizer_globals": optimizer_globals,
-        }
-
-        weights_dict: dict = self._deepcopy(optimizer_params)
-
-        if filepath[-4:] != ".npz":
-            filepath = f"{filepath}.npz"
-
-        save_data: dict = weights_dict.copy()
-        save_data["architecture"] = json.dumps(layers_config)
-        save_data["model_config"] = json.dumps(model_config)
-
-        np.savez_compressed(filepath, **save_data)
-
-    REGISTRY = {
-        # Layers
-        "Layer": Layer,
-        "Dense": Dense,
-        "Dropout": Dropout,
-        "BatchNormalization": BatchNormalization,
-        "Convolutional": Convolutional,
-        "Reshape": Reshape,
-        # Activations
-        "Activation": Activation,
-        "PReLU": PReLU,
-        "ReLU": ReLU,
-        "Sigmoid": Sigmoid,
-        "Softmax": Softmax,
-        "Swish": Swish,
-        "Tanh": Tanh,
-        # Losses
-        "Loss": Loss,
-        "MSE": MSE,
-        "BinaryCrossEntropy": BinaryCrossEntropy,
-        "CategoricalCrossEntropy": CategoricalCrossEntropy,
-        # Optimizers
-        "Optimizer": Optimizer,
-        "SGD": SGD,
-        "Adam": Adam,
-        "RMSprop": RMSprop,
-    }
-
-    @staticmethod
-    def load(path: str | Path) -> "Model":
-        filepath: str = str(path) if isinstance(path, Path) else path
-
-        if filepath[-4:] != ".npz":
-            filepath = f"{filepath}.npz"
-
-        data: dict = np.load(filepath, allow_pickle=True)
-
-        layers_config: dict = json.loads(str(data["architecture"]))
-        model_config: dict = json.loads(str(data["model_config"]))
-
-        layers: list[Layer] = []
-        for conf in layers_config:
-            layer_type: str = str(conf.pop("type"))
-            layer_class: Callable | None = Model.REGISTRY.get(layer_type)
-
-            if layer_class is None:
-                raise ValueError(f"Unknown layer type: {layer_type}")
-
-            layer: Layer = layer_class(**conf)
-            layers.append(layer)
-
-        loss_conf: dict = model_config["loss"]
-        loss_type: str = str(loss_conf.pop("type"))
-        loss_class: Callable | None = Model.REGISTRY.get(loss_type)
-
-        if loss_class is None:
-            raise ValueError(f"Unknown loss type: {loss_type}")
-
-        loss: Loss = loss_class(**loss_conf)
-
-        optim_conf: dict | str = model_config["optimizer"]
-        optim_type: str
-
-        if isinstance(optim_conf, dict):
-            optim_type = str(optim_conf.pop("type"))
-        else:
-            optim_type = str(optim_conf)
-            optim_conf = {}
-
-        optim_class: Callable | None = Model.REGISTRY.get(optim_type)
-
-        if optim_class is None:
-            raise ValueError(f"Unknown optimizer type: {optim_type}")
-
-        optimizer: Optimizer = optim_class(**optim_conf)
-
-        if "optimizer_globals" in model_config:
-            for param_name, param in model_config["optimizer_globals"].items():
-                setattr(optimizer, param_name, param)
-
-        model = Model(layers, loss, optimizer)
-        Model._restore_weights(model, data, optimizer)
-
-        return model
-
-    @staticmethod
-    def _restore_weights(model, weights_dict: dict, optimizer: Optimizer | None = None) -> None:
-        for i, layer in enumerate(model.layers):
+    def restore_weights(self, weights_dict: dict, optimizer: Optimizer | None = None) -> None:
+        for i, layer in enumerate(self.layers):
             if hasattr(layer, "params"):
-                for l_param_name, (_, _) in layer.params.items():
+                current_params = {}
+                for l_param_name in layer.params:
                     logical_name = f"layer_{i}_{l_param_name}"
-
                     if logical_name in weights_dict:
-                        current_param = getattr(layer, l_param_name)
-                        np.copyto(current_param, weights_dict[logical_name])
+                        current_params[l_param_name] = weights_dict[logical_name]
 
-                        p_id = id(current_param)
+                if hasattr(layer, "load_params") and current_params:
+                    layer.load_params(current_params)
 
-                        if not optimizer:
-                            continue
+                if optimizer:
+                    for l_param_name, (l_param, _) in layer.params.items():
+                        p_id = id(l_param)
+                        logical_name = f"layer_{i}_{l_param_name}"
 
                         for o_param_name, o_param in optimizer.params.items():
                             if not isinstance(o_param, dict):
                                 continue
-
                             key = f"optimizer_{o_param_name}_{logical_name}"
                             if key in weights_dict:
                                 if p_id not in o_param:
-                                    o_param[p_id] = np.zeros_like(current_param)
+                                    o_param[p_id] = np.zeros_like(l_param)
                                 np.copyto(o_param[p_id], weights_dict[key])
+
+            if hasattr(layer, "state"):
+                current_state = {}
+                for l_state_name in layer.state:
+                    logical_name = f"layer_{i}_state_{l_state_name}"
+                    if logical_name in weights_dict:
+                        current_state[l_state_name] = weights_dict[logical_name]
+
+                if current_state:
+                    layer.state = current_state
