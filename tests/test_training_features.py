@@ -132,5 +132,5 @@ def test_auto_evaluation_splits_data():
 
     output = captured_output.getvalue()
 
-    assert "val_error" in output, "Auto-evaluation did not seem to trigger (no 'val_error' in logs)."
+    assert "evaluation" in output, "Auto-evaluation did not seem to trigger (no evaluation section in logs)."
     assert "val_accuracy" not in output, "Regression task should not report accuracy."

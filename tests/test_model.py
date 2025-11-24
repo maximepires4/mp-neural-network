@@ -2,8 +2,9 @@ import numpy as np
 import pytest
 
 from mpneuralnetwork.activations import ReLU, Softmax
-from mpneuralnetwork.layers import Dense
+from mpneuralnetwork.layers import BatchNormalization, Dense
 from mpneuralnetwork.losses import MSE, BinaryCrossEntropy, CategoricalCrossEntropy
+from mpneuralnetwork.metrics import Accuracy
 from mpneuralnetwork.model import Model
 from mpneuralnetwork.optimizers import SGD, Adam, RMSprop
 from mpneuralnetwork.serialization import load_model, save_model
@@ -264,3 +265,42 @@ def test_model_validation_and_early_stopping():
     # Test auto_evaluation split logic
     model2 = Model([Dense(5, input_size=2), Dense(1)], MSE())
     model2.train(X_train, y_train, epochs=2, batch_size=5, auto_evaluation=0.2)
+
+
+def test_model_raises_error_if_input_size_missing():
+    """
+    Test that Model raises ValueError if the first layer doesn't have input_size defined.
+    """
+    # Dense without input_size
+    with pytest.raises(ValueError, match="Input layer does not define input size"):
+        Model([Dense(10)], MSE())
+
+    # BatchNormalization typically doesn't take input_size in init, so it should fail as first layer
+    with pytest.raises(ValueError, match="Input layer does not define input size"):
+        Model([BatchNormalization()], MSE())
+
+
+def test_smart_metrics_initialization():
+    """
+    Test that Model automatically adds relevant metrics based on the loss function.
+    """
+    # Case 1: MSE Loss (Regression) -> Should add RMSE, R2Score
+    model_reg = Model([Dense(1, input_size=1)], MSE())
+    metric_names = [m.__class__.__name__ for m in model_reg.metrics]
+    assert "RMSE" in metric_names
+    assert "R2Score" in metric_names
+    assert "Accuracy" not in metric_names
+
+    # Case 2: CrossEntropy (Classification) -> Should add Accuracy, F1Score
+    model_clf = Model([Dense(1, input_size=1)], BinaryCrossEntropy())
+    metric_names = [m.__class__.__name__ for m in model_clf.metrics]
+    assert "Accuracy" in metric_names
+    assert "F1Score" in metric_names
+    assert "RMSE" not in metric_names
+
+    # Case 3: User provided metrics -> Should NOT overwrite
+    custom_metrics = [Accuracy()]
+    model_custom = Model([Dense(1, input_size=1)], MSE(), metrics=custom_metrics)
+    assert len(model_custom.metrics) == 1
+    assert isinstance(model_custom.metrics[0], Accuracy)
+    assert "RMSE" not in [m.__class__.__name__ for m in model_custom.metrics]

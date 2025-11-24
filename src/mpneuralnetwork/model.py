@@ -1,6 +1,8 @@
 import numpy as np
 from numpy.typing import NDArray
 
+from mpneuralnetwork.metrics import RMSE, Accuracy, F1Score, Metric, R2Score
+
 from .activations import Activation, PReLU, ReLU, Sigmoid, Softmax, Swish
 from .layers import BatchNormalization, Dense, Dropout, Layer, Lit_W
 from .losses import MSE, BinaryCrossEntropy, CategoricalCrossEntropy, Loss
@@ -8,22 +10,17 @@ from .optimizers import SGD, Optimizer
 
 
 class Model:
-    def __init__(self, layers: list[Layer], loss: Loss, optimizer: Optimizer | None = None) -> None:
+    def __init__(self, layers: list[Layer], loss: Loss, optimizer: Optimizer | None = None, metrics: list[Metric] | None = None) -> None:
         self.layers: list[Layer] = layers
         self.loss: Loss = loss
         self.optimizer: Optimizer = SGD() if optimizer is None else optimizer
+        self.metrics: list[Metric] = metrics if metrics is not None else []
         self.output_activation: Activation | Layer | None = None
-
-        self.task_type: str
 
         self._build_graph()
         self._init_smart_weights()
         self._init_output_activation()
-
-        if isinstance(loss, MSE):
-            self.task_type = "regression"
-        else:
-            self.task_type = "classification"
+        self._init_smart_metrics()
 
     def _build_graph(self) -> None:
         first_layer = self.layers[0]
@@ -81,6 +78,15 @@ class Model:
         if isinstance(self.layers[len(self.layers) - 1], type(self.output_activation)):
             self.layers = self.layers[:-1]
 
+    def _init_smart_metrics(self) -> None:
+        if len(self.metrics) != 0:
+            return
+
+        if isinstance(self.loss, MSE):
+            self.metrics = [RMSE(), R2Score()]
+        else:
+            self.metrics = [Accuracy(), F1Score()]
+
     def train(
         self,
         X_train: NDArray,
@@ -110,8 +116,11 @@ class Model:
         best_weights: dict | None = None
 
         for epoch in range(epochs):
-            error: float = 0
-            accuracy: float | None = 0 if self.task_type != "regression" else None
+            metric_dict: dict[str, float] = {}
+            metric_dict["loss"] = 0
+
+            for metric in self.metrics:
+                metric_dict[metric.__class__.__name__] = 0
 
             permutation: NDArray = np.random.permutation(num_samples)
             X_shuffled: NDArray = X_copy[permutation]
@@ -123,10 +132,10 @@ class Model:
                 X_batch: NDArray = X_shuffled[start:end]
                 y_batch: NDArray = y_shuffled[start:end]
 
-                predictions, (new_error, new_accuracy) = self.evaluate(X_batch, y_batch, training=True)
-                error += new_error
-                if accuracy is not None and new_accuracy is not None:
-                    accuracy += new_accuracy
+                predictions, new_metric_dict = self.evaluate(X_batch, y_batch, training=True)
+
+                for key, _ in new_metric_dict.items():
+                    metric_dict[key] += _
 
                 grad: NDArray = self.loss.prime(predictions, y_batch)
 
@@ -135,36 +144,30 @@ class Model:
 
                 self.optimizer.step(self.layers)
 
-            error /= num_batches
             spacing_str = " " * abs(len(str(epochs)) - len(str(epoch + 1)))
-            message = f"epoch {spacing_str}{epoch + 1}/{epochs}   error = {error:.4f}"
+            message = f"epoch {spacing_str}{epoch + 1}/{epochs}   |   [training]"
 
-            if accuracy is not None:
-                accuracy /= num_batches
-                message += f"   accuracy = {100 * accuracy:.2f}%"
-            else:
-                message += f"   rmse = {np.sqrt(error):.4f}"
+            for key, _ in metric_dict.items():
+                metric_dict[key] /= num_batches
+                message += f"   {key} = {metric_dict[key]:.4f}"
 
             if evaluation is not None:
-                _, (val_error, val_accuracy) = self.evaluate(evaluation[0], evaluation[1], training=False)
+                _, val_metric_dict = self.evaluate(evaluation[0], evaluation[1], training=False)
 
-                if val_error < best_error:
-                    best_error = val_error
+                if val_metric_dict["loss"] < best_error:
+                    best_error = val_metric_dict["loss"]
                     patience = early_stopping
                     if model_checkpoint:
                         best_weights = self.get_weights()
                 else:
                     patience -= 1
 
-                message += f"   |   val_error = {val_error:.4f}"
+                message += "   |   [evaluation]"
+                for key, value in val_metric_dict.items():
+                    message += f"   {key} = {value:.4f}"
 
-                if val_accuracy is not None:
-                    message += f"   val_accuracy = {100 * val_accuracy:.2f}%"
-                else:
-                    message += f"   val_rmse = {np.sqrt(val_error):.4f}"
-
-            elif error < best_error:
-                best_error = error
+            elif metric_dict["loss"] < best_error:
+                best_error = metric_dict["loss"]
                 patience = early_stopping
                 if model_checkpoint:
                     best_weights = self.get_weights()
@@ -179,37 +182,37 @@ class Model:
 
         if model_checkpoint and best_weights is not None:
             self.restore_weights(best_weights)
-            print(f"MODEL CHECKPOINT: {best_error}")
-            # TODO: Inform user
+            print(f"MODEL CHECKPOINT: {best_error:.4f}")
+            # TODO: Save also optimizer state, better user output
 
-    def evaluate(self, X: NDArray, y: NDArray, training=False) -> tuple[NDArray, tuple[float, float | None]]:
+    def evaluate(self, X: NDArray, y: NDArray, training=False) -> tuple[NDArray, dict[str, float]]:
         logits: NDArray = np.copy(X)
         for layer in self.layers:
             logits = layer.forward(logits, training=training)
 
-        error: float = self.loss.direct(logits, y)
+        loss: float = self.loss.direct(logits, y)
+
+        metric_dict: dict[str, float] = {}
+        metric_dict["loss"] = loss
 
         predictions: NDArray = logits
         if not training and self.output_activation is not None:
             predictions = self.output_activation.forward(logits)
 
-        accuracy: float | None = None
-        if self.task_type != "regression":
-            if y.ndim == 2 and y.shape[1] > 1:
-                accuracy = np.sum(np.argmax(predictions, axis=1) == np.argmax(y, axis=1)) / y.shape[0]
-            elif y.ndim == 1:
-                pred_labels = (predictions > 0.5).astype(int)
-                accuracy = np.sum(pred_labels == y) / y.shape[0]
+        for metric in self.metrics:
+            if isinstance(metric, RMSE) and isinstance(self.loss, MSE):
+                metric_dict[metric.__class__.__name__] = metric.from_mse(loss)
+            else:
+                metric_dict[metric.__class__.__name__] = metric(y, predictions)
 
-        return predictions, (error, accuracy)
+        return predictions, metric_dict
 
     def test(self, X_test: NDArray, y_test: NDArray) -> None:
-        _, (error, accuracy) = self.evaluate(X_test, y_test, training=False)
+        _, metric_dict = self.evaluate(X_test, y_test, training=False)
 
-        if accuracy is not None:
-            print(f"test error = {error:.4f}   test accuracy = {accuracy * 100:.2f}%")
-        else:
-            print(f"test error = {error:.4f}   test rmse = {np.sqrt(error):.4f}")
+        print("Test resuls:")
+        for key, value in metric_dict.items():
+            print(f"   {key} = {value:.4f}")
 
     def predict(self, input: NDArray) -> NDArray:
         output: NDArray = np.copy(input)
