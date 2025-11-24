@@ -47,10 +47,16 @@ class Model:
 
             if isinstance(layer, (Dense)) and layer.initialization == "auto":
                 method: Lit_W = "xavier"
+                no_bias: bool = False
 
                 for j in range(i + 1, len(self.layers)):
                     next_layer = self.layers[j]
-                    if isinstance(next_layer, (BatchNormalization, Dropout)):
+
+                    if isinstance(next_layer, BatchNormalization):
+                        no_bias = True
+                        continue
+
+                    if isinstance(next_layer, Dropout):
                         continue
 
                     if isinstance(next_layer, (ReLU, PReLU, Swish)):
@@ -60,7 +66,7 @@ class Model:
                     if isinstance(next_layer, (Activation, Dense)):
                         break
 
-                layer.init_weights(method)
+                layer.init_weights(method, no_bias)
 
     def _init_output_activation(self) -> None:
         if isinstance(self.loss, BinaryCrossEntropy):

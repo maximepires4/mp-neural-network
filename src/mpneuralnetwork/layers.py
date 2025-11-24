@@ -50,10 +50,11 @@ class Layer:
 
 
 class Dense(Layer):
-    def __init__(self, output_size: int, input_size: int | None = None, initialization: Lit_W = "auto") -> None:
+    def __init__(self, output_size: int, input_size: int | None = None, initialization: Lit_W = "auto", no_bias: bool = False) -> None:
         self.input_size: int
         self.output_size: int = output_size
         self.initialization: Lit_W = initialization
+        self.no_bias: bool = no_bias
 
         self.weights: NDArray
         self.weights_gradient: NDArray
@@ -72,13 +73,10 @@ class Dense(Layer):
     def build(self, input_size: int):
         super().build(input_size)
 
-        self.biases = np.random.randn(1, self.output_size)
-        self.biases_gradient = np.zeros_like(self.biases)
-
         if self.initialization != "auto":
-            self.init_weights(self.initialization)
+            self.init_weights(self.initialization, self.no_bias)
 
-    def init_weights(self, method: Lit_W) -> None:
+    def init_weights(self, method: Lit_W, no_bias: bool) -> None:
         std_dev = 0.1
 
         if method == "he":
@@ -89,28 +87,41 @@ class Dense(Layer):
         self.weights = np.random.randn(self.input_size, self.output_size) * std_dev
         self.weights_gradient = np.zeros_like(self.weights)
 
+        self.no_bias = no_bias
+
+        if not self.no_bias:
+            self.biases = np.random.randn(1, self.output_size)
+            self.biases_gradient = np.zeros_like(self.biases)
+
     def forward(self, input_batch: NDArray, training: bool = True) -> NDArray:
         self.input = input_batch
-        res: NDArray = self.input @ self.weights + self.biases
+
+        res: NDArray
+        if self.no_bias:
+            res = self.input @ self.weights
+        else:
+            res = self.input @ self.weights + self.biases
         return res
 
     def backward(self, output_gradient_batch: NDArray) -> NDArray:
         self.weights_gradient = self.input.T @ output_gradient_batch
-        self.biases_gradient = np.sum(output_gradient_batch, axis=0, keepdims=True)
+        if not self.no_bias:
+            self.biases_gradient = np.sum(output_gradient_batch, axis=0, keepdims=True)
 
         grad: NDArray = output_gradient_batch @ self.weights.T
         return grad
 
     @property
     def params(self) -> dict[str, tuple[NDArray, NDArray]]:
-        return {
-            "weights": (self.weights, self.weights_gradient),
-            "biases": (self.biases, self.biases_gradient),
-        }
+        params = {"weights": (self.weights, self.weights_gradient)}
+        if not self.no_bias:
+            params["biases"] = (self.biases, self.biases_gradient)
+        return params
 
     def load_params(self, params: dict[str, NDArray]) -> None:
-        self.weights = params["weights"]
-        self.biases = params["biases"]
+        self.weights[:] = params["weights"]
+        if not self.no_bias:
+            self.biases[:] = params["biases"]
 
 
 class Dropout(Layer):
@@ -212,8 +223,8 @@ class BatchNormalization(Layer):
         return {"gamma": (self.gamma, self.gamma_gradient), "beta": (self.beta, self.beta_gradient)}
 
     def load_params(self, params: dict[str, NDArray]) -> None:
-        self.gamma = params["gamma"]
-        self.beta = params["beta"]
+        self.gamma[:] = params["gamma"]
+        self.beta[:] = params["beta"]
 
     @property
     def state(self) -> dict[str, NDArray]:

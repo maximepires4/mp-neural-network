@@ -59,13 +59,13 @@ def test_model_checkpoint_restores_best_weights():
     # 1. Create model and save "Good" weights
     model = Model([Dense(1, input_size=1), ReLU(), Dense(1)], MSE(), Adam(learning_rate=0.1))
     model.layers[0].weights[:] = 1.0  # Set known good weights
-    best_weights_memory = model._deepcopy()
+    best_weights_memory = model.get_weights()
 
-    # 2. Modify model weights to "Bad"
-    model.layers[0].weights[:] = 999.0
+    # 2. Ruin the weights ("Bad" weights)
+    model.layers[0].weights[:] = -100.0
 
     # 3. Trigger restore
-    model._restore_weights(model, best_weights_memory)
+    model.restore_weights(best_weights_memory)
 
     # 4. Verify restoration
     assert np.allclose(model.layers[0].weights, 1.0), "Model checkpoint failed to restore weights."
