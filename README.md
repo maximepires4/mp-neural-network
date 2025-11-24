@@ -39,7 +39,7 @@ MPNeuralNetwork goes beyond basic matrix operations by incorporating an **"intel
 
 | Component | Details |
 | :---- | :---- |
-| **Layers** | `Dense`, `Convolutional` (Conv2D), `Dropout`, `Reshape` |
+| **Layers** | `Dense`, `Convolutional` (Conv2D), `Dropout`, `Reshape`, `BatchNormalization` |
 | **Activations** | `ReLU`, `Sigmoid`, `Tanh`, `Softmax`, `PReLU`, `Swish` |
 | **Loss Functions** | `MSE` (Regression), `BinaryCrossEntropy`, `CategoricalCrossEntropy` (Logits optimized) |
 | **Optimizers** | `SGD` (with Momentum), `RMSprop`, `Adam` |

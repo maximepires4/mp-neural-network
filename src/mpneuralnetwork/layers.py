@@ -20,7 +20,9 @@ class Layer:
 
     def build(self, input_size: int) -> None:
         self.input_size = input_size
-        self.output_size = input_size
+
+        if not hasattr(self, "output_size"):
+            self.output_size = input_size
 
     @abstractmethod
     def forward(self, input_batch: NDArray, training: bool = True) -> NDArray:
@@ -56,7 +58,7 @@ class Dense(Layer):
         return config
 
     def build(self, input_size: int):
-        self.input_size = input_size
+        super().build(input_size)
 
         self.biases = np.random.randn(1, self.output_size)
         self.biases_gradient = np.zeros_like(self.biases)
@@ -117,6 +119,81 @@ class Dropout(Layer):
     def backward(self, output_gradient_batch: NDArray) -> NDArray:
         grad: NDArray = output_gradient_batch * self.mask
         return grad
+
+
+class BatchNormalization(Layer):
+    def __init__(self, momentum: float = 0.9, epsilon: float = 1e-8) -> None:
+        self.momentum: float = momentum
+        self.epsilon: float = epsilon
+
+        self.gamma: NDArray
+        self.beta: NDArray
+
+        self.cache_m: NDArray
+        self.cache_v: NDArray
+
+    def build(self, input_size: int) -> None:
+        super().build(input_size)
+
+        self.gamma = np.ones((1, self.input_size))
+        self.gamma_gradient = np.zeros_like(self.gamma)
+
+        self.beta = np.zeros((1, self.input_size))
+        self.beta_gradient = np.zeros_like(self.beta)
+
+        self.cache_m = np.zeros((1, input_size))
+        self.cache_v = np.ones((1, input_size))
+
+        self.std_inv: NDArray
+        self.x_centered: NDArray
+        self.x_norm: NDArray
+
+    def get_config(self) -> dict:
+        config = super().get_config()
+        config.update({"momentum": self.momentum, "epsilon": self.epsilon})
+        return config
+
+    def forward(self, input_batch: NDArray, training: bool = True) -> NDArray:
+        self.input = input_batch
+
+        mean: NDArray
+        var: NDArray
+
+        if training:
+            mean = np.mean(self.input, axis=0, keepdims=True)
+            var = np.var(self.input, axis=0, keepdims=True)
+
+            self.cache_m = self.momentum * self.cache_m + (1 - self.momentum) * mean
+            self.cache_v = self.momentum * self.cache_v + (1 - self.momentum) * var
+
+        else:
+            mean = self.cache_m
+            var = self.cache_v
+
+        self.std_inv = 1 / np.sqrt(var + self.epsilon)
+        self.x_centered = self.input - mean
+        self.x_norm = self.x_centered * self.std_inv
+
+        res: NDArray = self.x_norm * self.gamma + self.beta
+        return res
+
+    def backward(self, output_gradient_batch: NDArray) -> NDArray:
+        self.gamma_gradient = np.sum(self.x_norm * output_gradient_batch, axis=0, keepdims=True)
+        self.beta_gradient = np.sum(output_gradient_batch, axis=0, keepdims=True)
+
+        N = output_gradient_batch.shape[0]
+        dx_norm = output_gradient_batch * self.gamma
+
+        grad: NDArray = (
+            (1 / N)
+            * self.std_inv
+            * (N * dx_norm - np.sum(dx_norm, axis=0, keepdims=True) - self.x_norm * np.sum(dx_norm * self.x_norm, axis=0, keepdims=True))
+        )
+        return grad
+
+    @property
+    def params(self) -> dict[str, tuple[NDArray, NDArray]]:
+        return {"gamma": (self.gamma, self.gamma_gradient), "beta": (self.beta, self.beta_gradient)}
 
 
 class Convolutional(Layer):

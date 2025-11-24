@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from mpneuralnetwork.layers import Dense, Dropout, Layer
+from mpneuralnetwork.layers import BatchNormalization, Dense, Dropout, Layer
 from mpneuralnetwork.losses import MSE
 
 np.random.seed(69)  # For reproducible test data in parametrization
@@ -245,6 +245,56 @@ def test_dropout_gradient():
     assert np.allclose(analytical_grads, numerical_grads, atol=epsilon), "Dropout gradient does not match"
 
 
+def test_bn_config():
+    """Test get_config for BatchNormalization layer."""
+    bn = BatchNormalization(momentum=0.8, epsilon=1e-4)
+    config = bn.get_config()
+    assert config["momentum"] == 0.8
+    assert config["epsilon"] == 1e-4
+    assert config["type"] == "BatchNormalization"
+
+
+def test_bn_forward_properties():
+    """Test that BN output has zero mean and unit variance during training."""
+    bn = BatchNormalization()
+    bn.build(10)
+
+    # Create data with non-zero mean and non-unit variance
+    X = np.random.randn(100, 10) * 5 + 3
+
+    out = bn.forward(X, training=True)
+
+    # Check mean and std
+    assert np.allclose(np.mean(out, axis=0), 0, atol=0.1)
+    assert np.allclose(np.std(out, axis=0), 1, atol=0.1)
+
+    # Check that running stats are updated
+    # Initial cache_m is 0. After one update with momentum 0.9:
+    # new_cache = 0.9 * 0 + 0.1 * batch_mean (~3) = 0.3
+    assert np.all(np.abs(bn.cache_m) > 0)
+    assert np.all(bn.cache_v != 1.0)
+
+
+def test_bn_gradient_check():
+    """
+    Performs numerical gradient checking for BatchNormalization.
+    """
+    np.random.seed(42)
+    batch_size, n_features = 4, 3
+    layer = BatchNormalization()
+    layer.build(n_features)
+    loss_fn = MSE()
+
+    X = np.random.randn(batch_size, n_features)
+    Y = np.random.randn(batch_size, n_features)
+
+    # Initialize gamma/beta non-trivially
+    layer.gamma = np.random.randn(1, n_features)
+    layer.beta = np.random.randn(1, n_features)
+
+    _check_gradient(layer, X, Y, loss_fn, atol=1e-3)
+
+
 @pytest.mark.parametrize(
     "layer, input_shape, expected_output_shape",
     [
@@ -253,12 +303,18 @@ def test_dropout_gradient():
         (Dense(1, input_size=3, initialization="xavier"), (1, 3), (1, 1)),
         # Dropout Layer (should not change shape)
         (Dropout(0.5), (128, 20), (128, 20)),
+        # BatchNormalization (should not change shape)
+        (BatchNormalization(), (32, 10), (32, 10)),
     ],
 )
 def test_layer_output_shapes(layer, input_shape, expected_output_shape):
     """
     Tests that the output shape of a layer's forward pass is correct.
     """
+    # 0. Build layer if needed
+    if isinstance(layer, BatchNormalization):
+        layer.build(input_shape[1])
+
     # 1. Arrange: Create random input data with the specified shape
     input_data = np.random.randn(*input_shape)
 

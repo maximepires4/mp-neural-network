@@ -6,7 +6,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from .activations import Activation, PReLU, ReLU, Sigmoid, Softmax, Swish, Tanh
-from .layers import Convolutional, Dense, Dropout, Layer, Lit_W, Reshape
+from .layers import BatchNormalization, Convolutional, Dense, Dropout, Layer, Lit_W, Reshape
 from .losses import MSE, BinaryCrossEntropy, CategoricalCrossEntropy, Loss
 from .optimizers import SGD, Adam, Optimizer, RMSprop
 
@@ -52,11 +52,17 @@ class Model:
             if isinstance(layer, (Dense)) and layer.initialization == "auto":
                 method: Lit_W = "xavier"
 
-                if i + 1 < len(self.layers):
-                    next_layer = self.layers[i + 1]
+                for j in range(i + 1, len(self.layers)):
+                    next_layer = self.layers[j]
+                    if isinstance(next_layer, (BatchNormalization, Dropout)):
+                        continue
 
                     if isinstance(next_layer, (ReLU, PReLU, Swish)):
                         method = "he"
+                        break
+
+                    if isinstance(next_layer, (Activation, Dense)):
+                        break
 
                 layer.init_weights(method)
 
@@ -134,6 +140,8 @@ class Model:
             if accuracy is not None:
                 accuracy /= num_batches
                 message += f"   accuracy = {100 * accuracy:.2f}%"
+            else:
+                message += f"   rmse = {np.sqrt(error):.4f}"
 
             if evaluation is not None:
                 _, (val_error, val_accuracy) = self.evaluate(evaluation[0], evaluation[1], training=False)
@@ -150,6 +158,8 @@ class Model:
 
                 if val_accuracy is not None:
                     message += f"   val_accuracy = {100 * val_accuracy:.2f}%"
+                else:
+                    message += f"   val_rmse = {np.sqrt(val_error):.4f}"
 
             elif error < best_error:
                 best_error = error
@@ -167,6 +177,8 @@ class Model:
 
         if model_checkpoint and best_weights is not None:
             Model._restore_weights(self, best_weights)
+            print(f"MODEL CHECKPOINT: {best_error}")
+            # TODO: Inform user
 
     def evaluate(self, X: NDArray, y: NDArray, training=False) -> tuple[NDArray, tuple[float, float | None]]:
         logits: NDArray = np.copy(X)
@@ -193,9 +205,9 @@ class Model:
         _, (error, accuracy) = self.evaluate(X_test, y_test, training=False)
 
         if accuracy is not None:
-            print(f"test_error = {error:.4f}   test_accuracy = {accuracy * 100:.2f}%")
+            print(f"test error = {error:.4f}   test accuracy = {accuracy * 100:.2f}%")
         else:
-            print(f"test error = {error:.4f}")
+            print(f"test error = {error:.4f}   test rmse = {np.sqrt(error):.4f}")
 
     def _deepcopy(self, optimizer_params: dict | None = None) -> dict:
         weights_dict: dict = {}
@@ -263,6 +275,7 @@ class Model:
         "Layer": Layer,
         "Dense": Dense,
         "Dropout": Dropout,
+        "BatchNormalization": BatchNormalization,
         "Convolutional": Convolutional,
         "Reshape": Reshape,
         # Activations

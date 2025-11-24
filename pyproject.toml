@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mpneuralnetwork"
-version = "1!1.0.0a7"
+version = "1!1.0.0a8"
 dependencies = [
   "numpy>=1.21",
   "scipy>=1.10",
@@ -32,6 +32,11 @@ build = [
   "build",
   "twine",
 ]
+
+example = [
+  "pandas"
+]
+
 test = [
     "pytest>=7.0",
 ]
@@ -57,8 +62,8 @@ known-first-party = ["mpneuralnetwork"]
 
 [tool.mypy]
 python_version = "3.12"
-files = ["src/mpneuralnetwork"]
-exclude = ["tests", "example"]
+files = ["src/mpneuralnetwork", "example"]
+exclude = ["tests"]
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false

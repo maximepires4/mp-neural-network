@@ -20,4 +20,4 @@ repos:
       - id: mypy
         additional_dependencies: [numpy]
         args: [--ignore-missing-imports]
-        exclude: ^(tests|examples)/
+        exclude: tests/
