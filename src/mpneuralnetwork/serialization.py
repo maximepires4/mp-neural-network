@@ -5,12 +5,12 @@ from typing import cast
 
 import numpy as np
 
-from . import activations, layers, losses, metrics, optimizers
+from . import activations, layers, losses, optimizers
 from .model import Model
 
 
 def _get_class(name: str) -> Callable:
-    for module in [layers, activations, losses, optimizers, metrics]:
+    for module in [layers, activations, losses, optimizers]:
         if hasattr(module, name):
             return cast(Callable, getattr(module, name))
     raise ValueError(f"Class {name} not found in mpneuralnetwork submodules.")
