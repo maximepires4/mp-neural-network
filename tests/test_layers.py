@@ -3,6 +3,7 @@ import pytest
 
 from mpneuralnetwork.layers import BatchNormalization, Dense, Dropout, Layer
 from mpneuralnetwork.losses import MSE
+from tests.utils import check_gradient
 
 np.random.seed(69)  # For reproducible test data in parametrization
 
@@ -155,40 +156,6 @@ def test_dense_gradient_checking():
     assert np.allclose(analytical_grads_x, numerical_grads_x, atol=epsilon), "Input gradients do not match"
 
 
-def _check_gradient(layer, x, y, loss_fn, epsilon=1e-5, atol=1e-5):
-    """
-    Helper function to perform numerical gradient checking on the input gradient (dL/dX).
-    """
-    # 1. Get analytical gradient
-    preds = layer.forward(x.copy())
-    output_gradient = loss_fn.prime(preds, y)
-    analytical_grads = layer.backward(output_gradient)
-
-    # 2. Get numerical gradient
-    numerical_grads = np.zeros_like(x)
-    it = np.nditer(x, flags=["multi_index"], op_flags=["readwrite"])
-    while not it.finished:
-        ix = it.multi_index
-
-        original_value = x[ix]
-
-        x[ix] = original_value + epsilon
-        preds_plus = layer.forward(x.copy())
-        loss_plus = np.sum(loss_fn.direct(preds_plus, y))
-
-        x[ix] = original_value - epsilon
-        preds_minus = layer.forward(x.copy())
-        loss_minus = np.sum(loss_fn.direct(preds_minus, y))
-
-        x[ix] = original_value
-
-        numerical_grads[ix] = (loss_plus - loss_minus) / (2 * epsilon)
-        it.iternext()
-
-    # 3. Assert that the gradients are close
-    assert np.allclose(analytical_grads, numerical_grads, atol=atol), f"Gradient mismatch for layer {layer.__class__.__name__}"
-
-
 def test_dropout_gradient():
     """
     Performs numerical gradient checking for the Dropout layer.
@@ -292,7 +259,7 @@ def test_bn_gradient_check():
     layer.gamma = np.random.randn(1, n_features)
     layer.beta = np.random.randn(1, n_features)
 
-    _check_gradient(layer, X, Y, loss_fn, atol=1e-3)
+    check_gradient(layer, X, Y, loss_fn, atol=1e-3)
 
 
 @pytest.mark.parametrize(

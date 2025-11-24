@@ -3,6 +3,7 @@ import pytest
 
 from mpneuralnetwork.activations import PReLU, ReLU, Sigmoid, Softmax, Swish, Tanh
 from mpneuralnetwork.losses import MSE
+from tests.utils import check_gradient
 
 
 @pytest.mark.parametrize(
@@ -88,55 +89,6 @@ def test_swish(input_val, expected_forward, expected_backward):
     assert np.allclose(activation.backward(1), expected_backward)
 
 
-def _check_gradient(layer, x, y, loss_fn, epsilon=1e-5, atol=1e-5):
-    """
-    Helper function to perform numerical gradient checking for a layer's backward pass.
-
-    Args:
-        layer: The layer instance to test.
-        x: Input data.
-        y: True labels.
-        loss_fn: The loss function instance.
-        epsilon: A small value for finite difference calculation.
-        atol: The absolute tolerance for comparing analytical and numerical gradients.
-    """
-    # 1. Calculate analytical gradient (the one computed by the backward method)
-    preds = layer.forward(x.copy())
-    output_gradient = loss_fn.prime(preds, y)
-    analytical_grads_x = layer.backward(output_gradient)
-
-    # 2. Calculate numerical gradient (the "true" gradient using finite differences)
-    numerical_grads_x = np.zeros_like(x)
-
-    it = np.nditer(x, flags=["multi_index"], op_flags=["readwrite"])
-    while not it.finished:
-        ix = it.multi_index
-
-        # Save original value
-        original_value = x[ix]
-
-        # Calculate loss for x + epsilon
-        x[ix] = original_value + epsilon
-        preds_plus = layer.forward(x.copy())
-        loss_plus = np.sum(loss_fn.direct(preds_plus, y))  # Summing loss over batch and features
-
-        # Calculate loss for x - epsilon
-        x[ix] = original_value - epsilon
-        preds_minus = layer.forward(x.copy())
-        loss_minus = np.sum(loss_fn.direct(preds_minus, y))
-
-        # Restore original value
-        x[ix] = original_value
-
-        # Compute the slope and store it
-        numerical_grads_x[ix] = (loss_plus - loss_minus) / (2 * epsilon)
-
-        it.iternext()
-
-    # 3. Assert that the two gradients are close
-    assert np.allclose(analytical_grads_x, numerical_grads_x, atol=atol), f"Gradient mismatch for layer {layer.__class__.__name__}"
-
-
 @pytest.mark.parametrize(
     "activation_class, activation_args",
     [
@@ -165,7 +117,7 @@ def test_activation_gradients(activation_class, activation_args):
     if isinstance(layer, PReLU):
         X /= 10
 
-    _check_gradient(layer, X, Y, loss_fn)
+    check_gradient(layer, X, Y, loss_fn)
 
 
 @pytest.mark.parametrize(

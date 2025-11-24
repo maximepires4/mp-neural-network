@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 from mpneuralnetwork.losses import MSE, BinaryCrossEntropy, CategoricalCrossEntropy, Loss
+from tests.utils import check_loss_gradient
 
 
 def test_loss_configs():
@@ -136,55 +137,6 @@ def test_loss_gradient_shape(loss_class, y_pred_shape, y_true_shape):
     assert gradient.shape == y_pred.shape, f"Shape mismatch for {loss_class.__name__} gradient. Expected {y_pred.shape}, but got {gradient.shape}."
 
 
-def _check_loss_gradient(loss_fn, y_pred, y_true, epsilon=1e-5, atol=1e-5):
-    """
-
-    Helper function to perform numerical gradient checking for a loss function's prime method.
-
-    """
-
-    # 1. Analytical gradient
-
-    analytical_grad = loss_fn.prime(y_pred.copy(), y_true)
-
-    # 2. Numerical gradient
-
-    numerical_grad = np.zeros_like(y_pred)
-
-    it = np.nditer(y_pred, flags=["multi_index"], op_flags=["readwrite"])
-
-    while not it.finished:
-        ix = it.multi_index
-
-        original_value = y_pred[ix]
-
-        # Loss for y_pred + epsilon
-
-        y_pred[ix] = original_value + epsilon
-
-        loss_plus = loss_fn.direct(y_pred.copy(), y_true)
-
-        # Loss for y_pred - epsilon
-
-        y_pred[ix] = original_value - epsilon
-
-        loss_minus = loss_fn.direct(y_pred.copy(), y_true)
-
-        # Restore original value
-
-        y_pred[ix] = original_value
-
-        # Compute numerical gradient
-
-        numerical_grad[ix] = (loss_plus - loss_minus) / (2 * epsilon)
-
-        it.iternext()
-
-    # 3. Assert
-
-    assert np.allclose(analytical_grad, numerical_grad, atol=atol), f"Gradient mismatch for loss {loss_fn.__class__.__name__}"
-
-
 @pytest.mark.parametrize(
     "loss_class, y_pred_shape, y_true_shape",
     [
@@ -218,4 +170,4 @@ def test_loss_numerical_gradients(loss_class, y_pred_shape, y_true_shape):
     if isinstance(loss_fn, BinaryCrossEntropy):
         y_true = np.random.randint(0, 2, size=y_true_shape)
 
-    _check_loss_gradient(loss_fn, y_pred, y_true)
+    check_loss_gradient(loss_fn, y_pred, y_true)
