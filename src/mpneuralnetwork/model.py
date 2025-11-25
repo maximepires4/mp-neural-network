@@ -98,17 +98,22 @@ class Model:
         early_stopping: int | None = None,
         model_checkpoint: bool = True,
     ) -> None:
-        X_copy = np.copy(X_train)
-        y_copy = np.copy(y_train)
+        X_copy: NDArray = np.copy(X_train)
+        y_copy: NDArray = np.copy(y_train)
 
+        permutation: NDArray
         if evaluation is None and auto_evaluation != 0:
             split_i = int(len(X_train) * auto_evaluation)
+
+            permutation = np.random.permutation(X_copy.shape[0])
+            X_copy = X_copy[permutation]
+            y_copy = y_copy[permutation]
 
             X_copy, y_copy = X_train[:-split_i], y_train[:-split_i]
             evaluation = (X_train[-split_i:], y_train[-split_i:])
 
-        num_samples: int = X_copy.shape[0]
-        num_batches: int = int(np.floor(num_samples / batch_size))
+        num_samples = X_copy.shape[0]
+        num_batches = int(np.floor(num_samples / batch_size))
 
         early_stopping = early_stopping if early_stopping else epochs + 1
         patience: int = early_stopping
@@ -120,11 +125,11 @@ class Model:
             metric_dict["loss"] = 0
 
             for metric in self.metrics:
-                metric_dict[metric.__class__.__name__] = 0
+                metric_dict[metric.__class__.__name__.lower()] = 0
 
-            permutation: NDArray = np.random.permutation(num_samples)
-            X_shuffled: NDArray = X_copy[permutation]
-            y_shuffled: NDArray = y_copy[permutation]
+            permutation = np.random.permutation(num_samples)
+            X_shuffled = X_copy[permutation]
+            y_shuffled = y_copy[permutation]
 
             for i in range(num_batches):
                 start: int = i * batch_size
@@ -134,8 +139,8 @@ class Model:
 
                 predictions, new_metric_dict = self.evaluate(X_batch, y_batch, training=True)
 
-                for key, _ in new_metric_dict.items():
-                    metric_dict[key] += _
+                for key, value in new_metric_dict.items():
+                    metric_dict[key] += value
 
                 grad: NDArray = self.loss.prime(predictions, y_batch)
 
@@ -195,15 +200,21 @@ class Model:
         metric_dict: dict[str, float] = {}
         metric_dict["loss"] = loss
 
-        predictions: NDArray = logits
-        if not training and self.output_activation is not None:
-            predictions = self.output_activation.forward(logits)
+        predictions_metrics: NDArray = logits
+        if self.output_activation is not None:
+            predictions_metrics = self.output_activation.forward(logits)
 
         for metric in self.metrics:
+            key = metric.__class__.__name__.lower()
+
             if isinstance(metric, RMSE) and isinstance(self.loss, MSE):
-                metric_dict[metric.__class__.__name__] = metric.from_mse(loss)
+                metric_dict[key] = metric.from_mse(loss)
             else:
-                metric_dict[metric.__class__.__name__] = metric(y, predictions)
+                metric_dict[key] = metric(y, predictions_metrics)
+
+        predictions: NDArray = logits
+        if not training:
+            predictions = predictions_metrics
 
         return predictions, metric_dict
 

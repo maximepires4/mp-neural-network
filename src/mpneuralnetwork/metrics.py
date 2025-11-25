@@ -43,13 +43,12 @@ class R2Score(Metric):
 
 
 class Accuracy(Metric):
-    def __call__(self, y_true: NDArray, y_pred: NDArray, no_check: bool = False) -> float:
-        if not no_check:
-            if y_true.ndim == 2 and y_true.shape[1] > 1:
-                y_true = np.argmax(y_true, axis=1)
-                y_pred = np.argmax(y_pred, axis=1)
-            else:
-                y_pred = np.round(y_pred)
+    def __call__(self, y_true: NDArray, y_pred: NDArray) -> float:
+        if y_true.ndim == 2 and y_true.shape[1] > 1:
+            y_true = np.argmax(y_true, axis=1)
+            y_pred = np.argmax(y_pred, axis=1)
+        else:
+            y_pred = np.round(y_pred)
 
         return float(np.mean(y_true == y_pred))
 
@@ -63,18 +62,23 @@ class Precision(Metric):
         config.update({"epsilon": self.epsilon})
         return config
 
-    def __call__(self, y_true: NDArray, y_pred: NDArray, no_check: bool = False) -> float:
+    def __call__(self, y_true: NDArray, y_pred: NDArray, num_classes: int = 1, no_check: bool = False) -> float:
         if not no_check:
-            if y_true.ndim == 2 and y_true.shape[1] > 1:
+            num_classes = y_true.shape[1]
+            if y_true.ndim == 2 and num_classes > 1:
                 y_true = np.argmax(y_true, axis=1)
                 y_pred = np.argmax(y_pred, axis=1)
             else:
                 y_pred = np.round(y_pred)
 
-        tp = np.sum((y_pred == 1) & (y_true == 1))
-        fp = np.sum((y_pred == 1) & (y_true == 0))
+        sum: float = 0
+        for c in range(num_classes):
+            tp = np.sum((y_pred == c) & (y_true == c))
+            fp = np.sum((y_pred == c) & (y_true != c))
 
-        return float(tp / (tp + fp + self.epsilon))
+            sum += tp / (tp + fp + self.epsilon)
+
+        return sum / num_classes
 
 
 class Recall(Metric):
@@ -86,18 +90,22 @@ class Recall(Metric):
         config.update({"epsilon": self.epsilon})
         return config
 
-    def __call__(self, y_true: NDArray, y_pred: NDArray, no_check: bool = False) -> float:
+    def __call__(self, y_true: NDArray, y_pred: NDArray, num_classes: int = 1, no_check: bool = False) -> float:
         if not no_check:
-            if y_true.ndim == 2 and y_true.shape[1] > 1:
+            num_classes = y_true.shape[1]
+            if y_true.ndim == 2 and num_classes > 1:
                 y_true = np.argmax(y_true, axis=1)
                 y_pred = np.argmax(y_pred, axis=1)
             else:
                 y_pred = np.round(y_pred)
 
-        tp = np.sum((y_pred == 1) & (y_true == 1))
-        fn = np.sum((y_pred == 0) & (y_true == 1))
+        sum: float = 0
+        for c in range(num_classes):
+            tp = np.sum((y_pred == c) & (y_true == c))
+            fn = np.sum((y_pred != c) & (y_true == c))
+            sum += tp / (tp + fn + self.epsilon)
 
-        return float(tp / (tp + fn + self.epsilon))
+        return sum / num_classes
 
 
 class F1Score(Metric):
@@ -110,14 +118,15 @@ class F1Score(Metric):
         return config
 
     def __call__(self, y_true: NDArray, y_pred: NDArray) -> float:
-        if y_true.ndim == 2 and y_true.shape[1] > 1:
+        num_classes = y_true.shape[1]
+        if y_true.ndim == 2 and num_classes > 1:
             y_true = np.argmax(y_true, axis=1)
             y_pred = np.argmax(y_pred, axis=1)
         else:
             y_pred = np.round(y_pred)
 
-        precision = Precision(self.epsilon)(y_true, y_pred, no_check=True)
-        recall = Recall(self.epsilon)(y_true, y_pred, no_check=True)
+        precision = Precision(self.epsilon)(y_true, y_pred, num_classes=num_classes, no_check=True)
+        recall = Recall(self.epsilon)(y_true, y_pred, num_classes=num_classes, no_check=True)
 
         return 2 * precision * recall / (precision + recall + self.epsilon)
 
@@ -132,6 +141,7 @@ class TopKAccuracy(Metric):
         return config
 
     def __call__(self, y_true: NDArray, y_pred: NDArray) -> float:
+        # TODO: no_check ?
         top_k_preds = np.argsort(y_pred, axis=1)[:, -self.k :]
 
         if y_true.ndim == 2 and y_true.shape[1] > 1:

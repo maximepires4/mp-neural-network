@@ -88,12 +88,7 @@ def test_precision_binary():
 
 
 def test_precision_categorical():
-    # Multi-class treated as macro/micro depends on implementation.
-    # The current implementation uses argmax, essentially treating it as multiclass
-    # BUT then it does `y_pred == 1`.
-    # Wait, `y_pred` becomes class INDICES (0, 1, 2...).
-    # `y_pred == 1` checks if class is 1.
-    # This effectively calculates precision for CLASS 1 only (binary precision for class index 1).
+    # Multi-class is now treated as Macro-Average (mean of precision per class).
 
     y_true = np.array([[1, 0, 0], [0, 1, 0], [0, 1, 0]])
     # Indices: 0, 1, 1
@@ -101,16 +96,28 @@ def test_precision_categorical():
     y_pred = np.array([[0.9, 0.1, 0], [0.1, 0.8, 0.1], [0.8, 0.2, 0]])
     # Indices: 0, 1, 0
 
-    # We are checking for CLASS 1 (== 1)
-    # True class 1s: Index 1, 2
-    # Pred class 1s: Index 1
+    # Class 0:
+    #   True: Index 0
+    #   Pred: Index 0, 2
+    #   TP: Index 0 (1). FP: Index 2 (True is 1). Count=1.
+    #   P_0 = 1 / (1 + 1) = 0.5
 
-    # TP (Pred=1 & True=1): Index 1. Count = 1.
-    # FP (Pred=1 & True!=1): None. Count = 0.
-    # Precision = 1 / 1 = 1.0
+    # Class 1:
+    #   True: Index 1, 2
+    #   Pred: Index 1
+    #   TP: Index 1 (1). FP: 0.
+    #   P_1 = 1 / 1 = 1.0
+
+    # Class 2:
+    #   True: None
+    #   Pred: None
+    #   TP: 0. FP: 0.
+    #   P_2 = 0.0
+
+    # Macro Precision = (0.5 + 1.0 + 0.0) / 3 = 0.5
 
     metric = Precision()
-    assert np.isclose(metric(y_true, y_pred), 1.0)
+    assert np.isclose(metric(y_true, y_pred), 0.5)
 
 
 def test_recall_binary():
