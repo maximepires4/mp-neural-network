@@ -6,7 +6,7 @@ from mpneuralnetwork.metrics import RMSE, Accuracy, F1Score, Metric, R2Score
 from .activations import Activation, PReLU, ReLU, Sigmoid, Softmax, Swish
 from .layers import BatchNormalization, Convolutional, Dense, Dropout, Layer, Lit_W
 from .losses import MSE, BinaryCrossEntropy, CategoricalCrossEntropy, Loss
-from .optimizers import SGD, Optimizer
+from .optimizers import SGD, Adam, Optimizer
 
 
 class Model:
@@ -119,6 +119,7 @@ class Model:
         patience: int = early_stopping
         best_error: float = float("inf")
         best_weights: dict | None = None
+        temp_t: int = 0  # TODO: Find a better solution
 
         for epoch in range(epochs):
             metric_dict: dict[str, float] = {}
@@ -164,6 +165,8 @@ class Model:
                     patience = early_stopping
                     if model_checkpoint:
                         best_weights = self.get_weights()
+                        if isinstance(self.optimizer, Adam):
+                            temp_t = self.optimizer.t
                 else:
                     patience -= 1
 
@@ -176,6 +179,8 @@ class Model:
                 patience = early_stopping
                 if model_checkpoint:
                     best_weights = self.get_weights()
+                    if isinstance(self.optimizer, Adam):
+                        temp_t = self.optimizer.t
             else:
                 patience -= 1
 
@@ -187,6 +192,9 @@ class Model:
 
         if model_checkpoint and best_weights is not None:
             self.restore_weights(best_weights)
+            print(temp_t)
+            if isinstance(self.optimizer, Adam):
+                self.optimizer.t = temp_t
             print(f"MODEL CHECKPOINT: {best_error:.4f}")
             # TODO: Save also optimizer state, better user output
 
@@ -249,6 +257,8 @@ class Model:
                         continue
 
                     for o_param_name, o_param in optimizer_params.items():
+                        if not isinstance(o_param, dict):
+                            continue
                         if p_id in o_param:
                             weights_dict[f"optimizer_{o_param_name}_{logical_name}"] = np.copy(o_param[p_id])
 
