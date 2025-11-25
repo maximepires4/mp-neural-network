@@ -33,11 +33,6 @@ if __name__ == "__main__":
 
     model = Model(network, CategoricalCrossEntropy(), Adam())
 
-    X_train = X_train[:800]
-    y_train = y_train[:1000]
-    X_val = X_val[:200]
-    y_val = y_val[:200]
-
     model.train(X_train, y_train, epochs=10, batch_size=64, evaluation=(X_val, y_val))
 
     print("Evaluating on test set...")
