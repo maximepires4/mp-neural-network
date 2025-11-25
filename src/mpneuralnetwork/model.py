@@ -28,15 +28,15 @@ class Model:
         if not hasattr(first_layer, "input_size") or first_layer.input_size is None:
             raise ValueError("Input layer does not define input size")
 
-        current_output_size: int = first_layer.output_size
+        current_output_size: tuple[int, ...] = first_layer.output_shape
 
         for i in range(1, len(self.layers)):
             layer = self.layers[i]
 
             layer.build(current_output_size)
 
-            if hasattr(layer, "output_size"):
-                current_output_size = layer.output_size
+            if hasattr(layer, "output_shape"):
+                current_output_size = layer.output_shape
 
     def _init_smart_weights(self) -> None:
         for i in range(len(self.layers)):

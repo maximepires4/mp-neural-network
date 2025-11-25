@@ -2,27 +2,40 @@ from abc import abstractmethod
 from typing import Literal
 
 import numpy as np
+from numpy.lib.stride_tricks import sliding_window_view
 from numpy.typing import NDArray
 
 Lit_W = Literal["auto", "he", "xavier"]
 
 
 class Layer:
-    def __init__(self) -> None:
-        # TODO: Call super for setting `input_size` so that every layer can be a first layer
+    def __init__(self, output_shape: int | tuple[int, ...] | None = None, input_shape: int | tuple[int, ...] | None = None) -> None:
+        self.output_shape: tuple[int, ...]
+        if output_shape is not None:
+            if isinstance(output_shape, int):
+                output_shape = (output_shape,)
+            self.output_shape = output_shape
+
+        self.input_shape: tuple[int, ...]
+        if input_shape is not None:
+            if isinstance(input_shape, int):
+                input_shape = (input_shape,)
+            self.input_shape = input_shape
+
         self.input: NDArray
         self.output: NDArray
-        self.input_size: int
-        self.output_size: int
 
     def get_config(self) -> dict:
         return {"type": self.__class__.__name__}
 
-    def build(self, input_size: int) -> None:
-        self.input_size = input_size
+    def build(self, input_shape: int | tuple[int, ...]) -> None:
+        if isinstance(input_shape, int):
+            input_shape = (input_shape,)
 
-        if not hasattr(self, "output_size"):
-            self.output_size = input_size
+        self.input_shape = input_shape
+
+        if not hasattr(self, "output_shape"):
+            self.output_shape = input_shape
 
     @abstractmethod
     def forward(self, input_batch: NDArray, training: bool = True) -> NDArray:
@@ -47,11 +60,18 @@ class Layer:
     def state(self, state: dict[str, NDArray]) -> None:
         pass
 
+    @property
+    def input_size(self) -> int:
+        return int(np.prod(self.input_shape))
+
+    @property
+    def output_size(self) -> int:
+        return int(np.prod(self.output_shape))
+
 
 class Dense(Layer):
     def __init__(self, output_size: int, input_size: int | None = None, initialization: Lit_W = "auto", no_bias: bool = False) -> None:
-        self.input_size: int
-        self.output_size: int = output_size
+        super().__init__(output_shape=output_size, input_shape=input_size)
         self.initialization: Lit_W = initialization
         self.no_bias: bool = no_bias
 
@@ -67,12 +87,12 @@ class Dense(Layer):
     def get_config(self) -> dict:
         config = super().get_config()
         config.update(
-            {"output_size": self.output_size, "input_size": self.input_size, "initialization": self.initialization, "no_bias": self.no_bias}
+            {"output_size": self.output_shape, "input_size": self.input_shape, "initialization": self.initialization, "no_bias": self.no_bias}
         )
         return config
 
-    def build(self, input_size: int) -> None:
-        super().build(input_size)
+    def build(self, input_shape: int | tuple[int, ...]) -> None:
+        super().build(input_shape)
 
         if self.initialization != "auto":
             self.init_weights(self.initialization, self.no_bias)
@@ -127,6 +147,7 @@ class Dense(Layer):
 
 class Dropout(Layer):
     def __init__(self, probability: float = 0.5) -> None:
+        super().__init__()
         self.probability: float = probability
         self.mask: NDArray
 
@@ -151,6 +172,7 @@ class Dropout(Layer):
 
 class BatchNormalization(Layer):
     def __init__(self, momentum: float = 0.9, epsilon: float = 1e-8) -> None:
+        super().__init__()
         self.momentum: float = momentum
         self.epsilon: float = epsilon
 
@@ -160,8 +182,8 @@ class BatchNormalization(Layer):
         self.cache_m: NDArray
         self.cache_v: NDArray
 
-    def build(self, input_size: int) -> None:
-        super().build(input_size)
+    def build(self, input_shape: int | tuple[int, ...]) -> None:
+        super().build(input_shape)
 
         self.gamma = np.ones((1, self.input_size))
         self.gamma_gradient = np.zeros_like(self.gamma)
@@ -169,8 +191,8 @@ class BatchNormalization(Layer):
         self.beta = np.zeros((1, self.input_size))
         self.beta_gradient = np.zeros_like(self.beta)
 
-        self.cache_m = np.zeros((1, input_size))
-        self.cache_v = np.ones((1, input_size))
+        self.cache_m = np.zeros((1, self.input_size))
+        self.cache_v = np.ones((1, self.input_size))
 
         self.std_inv: NDArray
         self.x_centered: NDArray
@@ -241,7 +263,7 @@ class Convolutional(Layer):
     def __init__(
         self, output_depth: int, kernel_size: int, input_shape: tuple | None = None, initialization: Lit_W = "auto", no_bias: bool = False
     ) -> None:
-        self.input_shape: tuple
+        super().__init__()
         self.output_depth: int = output_depth
         self.kernel_size: int = kernel_size
         self.initialization: Lit_W = initialization
@@ -269,16 +291,15 @@ class Convolutional(Layer):
         )
         return config
 
-    def build(self, input_shape: tuple) -> None:
+    def build(self, input_shape: int | tuple[int, ...]) -> None:
         super().build(input_shape)
-        self.input_shape = input_shape
 
         _, input_height, input_width = self.input_shape
 
         output_height = input_height - self.kernel_size + 1
         output_width = input_width - self.kernel_size + 1
         self.output_shape = (self.output_depth, output_height, output_width)
-        self.output_size = self.output_shape
+        self.output_shape = self.output_shape
 
         if self.initialization != "auto":
             self.init_weights(self.initialization, self.no_bias)
@@ -317,7 +338,7 @@ class Convolutional(Layer):
         if not self.no_bias:
             output += self.biases
         output = output.reshape(batch_size, output_height, output_width, self.output_depth)
-        return output.transpose(0, 3, 1, 2)
+        return output.transpose(0, 3, 1, 2)  # type: ignore[no-any-return]
 
     def backward(self, output_gradient_batch: NDArray) -> NDArray:
         dOut_col = output_gradient_batch.transpose(0, 2, 3, 1).reshape(-1, self.output_depth)
@@ -354,9 +375,9 @@ class Convolutional(Layer):
         _, C, _, _ = input_batch.shape
         K = self.kernel_size
 
-        window = np.lib.stride_tricks.sliding_window_view(input_batch, window_shape=(K, K), axis=(2, 3))
+        window = sliding_window_view(input_batch, window_shape=(K, K), axis=(2, 3))  # type: ignore[call-overload]
         window = window.transpose(0, 2, 3, 1, 4, 5)
-        return window.reshape(-1, C * K * K)
+        return window.reshape(-1, C * K * K)  # type: ignore[no-any-return]
 
     @property
     def params(self) -> dict[str, tuple[NDArray, NDArray]]:
@@ -368,12 +389,8 @@ class Convolutional(Layer):
 
 
 class Flatten(Layer):
-    def build(self, input_size: int) -> None:
-        super().build(input_size)
-        self.output_size = np.prod(input_size)
-
     def forward(self, input_batch: NDArray, training: bool = True) -> NDArray:
         return input_batch.reshape(input_batch.shape[0], -1)
 
     def backward(self, output_gradient_batch: NDArray) -> NDArray:
-        return output_gradient_batch.reshape(output_gradient_batch.shape[0], *self.input_size)
+        return output_gradient_batch.reshape(output_gradient_batch.shape[0], *self.input_shape)
