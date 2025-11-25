@@ -9,6 +9,17 @@ from . import activations, layers, losses, metrics, optimizers
 from .model import Model
 
 
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super().default(obj)
+
+
 def _get_class(name: str) -> Callable:
     for module in [layers, activations, losses, optimizers, metrics]:
         if hasattr(module, name):
@@ -43,8 +54,8 @@ def save_model(model: Model, filepath: str) -> None:
         filepath = f"{filepath}.npz"
 
     save_data: dict = weights_dict.copy()
-    save_data["architecture"] = json.dumps(layers_config)
-    save_data["model_config"] = json.dumps(model_config)
+    save_data["architecture"] = json.dumps(layers_config, cls=NumpyEncoder)
+    save_data["model_config"] = json.dumps(model_config, cls=NumpyEncoder)
 
     np.savez_compressed(filepath, **save_data)
 

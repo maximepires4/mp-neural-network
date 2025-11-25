@@ -4,7 +4,7 @@ from numpy.typing import NDArray
 from mpneuralnetwork.metrics import RMSE, Accuracy, F1Score, Metric, R2Score
 
 from .activations import Activation, PReLU, ReLU, Sigmoid, Softmax, Swish
-from .layers import BatchNormalization, Dense, Dropout, Layer, Lit_W
+from .layers import BatchNormalization, Convolutional, Dense, Dropout, Layer, Lit_W
 from .losses import MSE, BinaryCrossEntropy, CategoricalCrossEntropy, Loss
 from .optimizers import SGD, Optimizer
 
@@ -42,7 +42,7 @@ class Model:
         for i in range(len(self.layers)):
             layer = self.layers[i]
 
-            if isinstance(layer, (Dense)) and layer.initialization == "auto":
+            if isinstance(layer, (Dense, Convolutional)) and layer.initialization == "auto":
                 method: Lit_W = "xavier"
                 no_bias: bool = False
 
@@ -60,7 +60,7 @@ class Model:
                         method = "he"
                         break
 
-                    if isinstance(next_layer, (Activation, Dense)):
+                    if isinstance(next_layer, (Activation, Dense, Convolutional)):
                         break
 
                 layer.init_weights(method, no_bias)

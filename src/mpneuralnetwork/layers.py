@@ -3,7 +3,6 @@ from typing import Literal
 
 import numpy as np
 from numpy.typing import NDArray
-from scipy import signal
 
 Lit_W = Literal["auto", "he", "xavier"]
 
@@ -67,10 +66,12 @@ class Dense(Layer):
 
     def get_config(self) -> dict:
         config = super().get_config()
-        config.update({"output_size": self.output_size, "input_size": self.input_size, "initialization": self.initialization})
+        config.update(
+            {"output_size": self.output_size, "input_size": self.input_size, "initialization": self.initialization, "no_bias": self.no_bias}
+        )
         return config
 
-    def build(self, input_size: int):
+    def build(self, input_size: int) -> None:
         super().build(input_size)
 
         if self.initialization != "auto":
@@ -237,71 +238,142 @@ class BatchNormalization(Layer):
 
 
 class Convolutional(Layer):
-    def __init__(self, input_shape, kernel_size, depth):
-        input_depth, input_height, input_width = input_shape
-        self.depth = depth
-        self.input_shape = input_shape
-        self.input_depth = input_depth
-        self.output_shape = (
-            depth,
-            input_height - kernel_size + 1,
-            input_width - kernel_size + 1,
+    def __init__(
+        self, output_depth: int, kernel_size: int, input_shape: tuple | None = None, initialization: Lit_W = "auto", no_bias: bool = False
+    ) -> None:
+        self.input_shape: tuple
+        self.output_depth: int = output_depth
+        self.kernel_size: int = kernel_size
+        self.initialization: Lit_W = initialization
+        self.no_bias: bool = no_bias
+
+        self.X_col: NDArray
+        self.kernels: NDArray
+        self.kernels_gradient: NDArray
+        self.biases: NDArray
+        self.biases_gradient: NDArray
+
+        if input_shape is not None:
+            self.build(input_shape)
+
+    def get_config(self) -> dict:
+        config = super().get_config()
+        config.update(
+            {
+                "output_depth": self.output_depth,
+                "kernel_size": self.kernel_size,
+                "input_shape": self.input_shape,
+                "initialization": self.initialization,
+                "no_bias": self.no_bias,
+            }
         )
-        self.kernels_shape = (depth, input_depth, kernel_size, kernel_size)
-        self.kernels = np.random.randn(*self.kernels_shape)
-        self.biases = np.random.randn(*self.output_shape)
-        self.kernels_gradient = np.zeros(self.kernels_shape)
-        self.biases_gradient = np.zeros(self.output_shape)
+        return config
 
-    def forward(self, input_batch, training=True):
-        # TODO: Need to vectorize this part. For now, only works for batch_size = 1
-        assert input_batch.ndim == 3, f"Non-vectorized Convolutional layer received a batch of size > 1 (shape={input_batch.shape})"
+    def build(self, input_shape: tuple) -> None:
+        super().build(input_shape)
+        self.input_shape = input_shape
 
+        _, input_height, input_width = self.input_shape
+
+        output_height = input_height - self.kernel_size + 1
+        output_width = input_width - self.kernel_size + 1
+        self.output_shape = (self.output_depth, output_height, output_width)
+        self.output_size = self.output_shape
+
+        if self.initialization != "auto":
+            self.init_weights(self.initialization, self.no_bias)
+
+    def init_weights(self, method: Lit_W, no_bias: bool) -> None:
+        std_dev = 0.1
+
+        input_depth, _, _ = self.input_shape
+
+        if method == "he":
+            std_dev = np.sqrt(2.0 / (input_depth * self.kernel_size * self.kernel_size))
+        elif method == "xavier":
+            std_dev = np.sqrt(1.0 / (input_depth * self.kernel_size * self.kernel_size))
+
+        kernels_shape = (self.output_depth, input_depth, self.kernel_size, self.kernel_size)
+
+        self.kernels = np.random.randn(*kernels_shape) * std_dev
+        self.kernels_gradient = np.zeros_like(self.kernels)
+
+        self.no_bias = no_bias
+
+        if not self.no_bias:
+            self.biases = np.random.randn(self.output_depth)
+            self.biases_gradient = np.zeros_like(self.biases)
+
+    def forward(self, input_batch: NDArray, training: bool = True) -> NDArray:
         self.input = input_batch
-        output = np.copy(self.biases)
-        for i in range(self.depth):
-            for j in range(self.input_depth):
-                output[i] += signal.correlate2d(self.input[j], self.kernels[i][j], "valid")
-        return output
+        batch_size = input_batch.shape[0]
 
-    def backward(self, output_gradient_batch):
-        # TODO: Need to vectorize this part. For now, only works for batch_size = 1
-        assert output_gradient_batch.ndim == 3, (
-            f"Non-vectorized Convolutional layer received a batch of size > 1 (shape={output_gradient_batch.shape})"
-        )
+        self.X_col = self._im2col(input_batch)
+        k_col = self.kernels.reshape(self.output_depth, -1)
 
-        self.kernels_gradient = np.zeros(self.kernels_shape)
-        self.biases_gradient = output_gradient_batch
+        _, output_height, output_width = self.output_shape
 
-        input_gradient = np.zeros(self.input_shape)
+        output = self.X_col @ k_col.T
+        if not self.no_bias:
+            output += self.biases
+        output = output.reshape(batch_size, output_height, output_width, self.output_depth)
+        return output.transpose(0, 3, 1, 2)
 
-        for i in range(self.depth):
-            for j in range(self.input_depth):
-                self.kernels_gradient[i][j] = signal.correlate2d(self.input[j], output_gradient_batch[i], "valid")
-                input_gradient[j] += signal.convolve2d(output_gradient_batch[i], self.kernels[i][j], "full")
+    def backward(self, output_gradient_batch: NDArray) -> NDArray:
+        dOut_col = output_gradient_batch.transpose(0, 2, 3, 1).reshape(-1, self.output_depth)
 
-        return input_gradient
+        if not self.no_bias:
+            self.biases_gradient = np.sum(dOut_col, axis=0)
+
+        k_col = dOut_col.T @ self.X_col
+        self.kernels_gradient = k_col.reshape(self.output_depth, self.input_shape[0], self.kernel_size, self.kernel_size)
+
+        W_col = self.kernels.reshape(self.output_depth, -1)
+        dX_col = dOut_col @ W_col
+
+        return self._col2im(dX_col, self.input.shape)
+
+    def _col2im(self, cols: NDArray, input_shape: tuple) -> NDArray:
+        N, C, _, _ = input_shape
+        _, H_out, W_out = self.output_shape
+        K = self.kernel_size
+
+        cols_reshaped = cols.reshape(N, H_out, W_out, C, K, K)
+
+        cols_transposed = cols_reshaped.transpose(0, 3, 1, 2, 4, 5)
+
+        dX = np.zeros(input_shape)
+
+        for i in range(K):
+            for j in range(K):
+                dX[:, :, i : i + H_out, j : j + W_out] += cols_transposed[:, :, :, :, i, j]
+
+        return dX
+
+    def _im2col(self, input_batch: NDArray) -> NDArray:
+        _, C, _, _ = input_batch.shape
+        K = self.kernel_size
+
+        window = np.lib.stride_tricks.sliding_window_view(input_batch, window_shape=(K, K), axis=(2, 3))
+        window = window.transpose(0, 2, 3, 1, 4, 5)
+        return window.reshape(-1, C * K * K)
 
     @property
     def params(self) -> dict[str, tuple[NDArray, NDArray]]:
-        # TODO: Add this
-        return {}
+        return {"kernels": (self.kernels, self.kernels_gradient), "biases": (self.biases, self.biases_gradient)}
+
+    def load_params(self, params: dict[str, NDArray]) -> None:
+        self.kernels[:] = params["kernels"]
+        self.biases[:] = params["biases"]
 
 
-class Reshape(Layer):
-    def __init__(self, input_shape, output_shape):
-        self.input_shape = input_shape
-        self.output_shape = output_shape
+class Flatten(Layer):
+    def build(self, input_size: int) -> None:
+        super().build(input_size)
+        self.output_size = np.prod(input_size)
 
-    def forward(self, input_batch, training=True):
-        batch_size = input_batch.shape[-1]
-        return np.reshape(input_batch, (*self.output_shape, batch_size))
+    def forward(self, input_batch: NDArray, training: bool = True) -> NDArray:
+        return input_batch.reshape(input_batch.shape[0], -1)
 
-    def backward(self, output_gradient_batch):
-        batch_size = output_gradient_batch.shape[-1]
-        return np.reshape(output_gradient_batch, (*self.input_shape, batch_size))
-
-    @property
-    def params(self) -> dict[str, tuple[NDArray, NDArray]]:
-        # TODO: Add this
-        return {}
+    def backward(self, output_gradient_batch: NDArray) -> NDArray:
+        return output_gradient_batch.reshape(output_gradient_batch.shape[0], *self.input_size)
