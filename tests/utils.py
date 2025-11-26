@@ -3,8 +3,10 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
+from mpneuralnetwork import DTYPE
 
-def check_loss_gradient(loss_fn, y_pred, y_true, epsilon=1e-5, atol=1e-5):
+
+def check_loss_gradient(loss_fn, y_pred, y_true, epsilon=1e-4, atol=1e-2):
     """
     Helper function to perform numerical gradient checking for a loss function's prime method (dL/dY_pred).
 
@@ -20,7 +22,7 @@ def check_loss_gradient(loss_fn, y_pred, y_true, epsilon=1e-5, atol=1e-5):
     analytical_grad = loss_fn.prime(y_pred.copy(), y_true)
 
     # 2. Numerical gradient
-    numerical_grad = np.zeros_like(y_pred)
+    numerical_grad = np.zeros_like(y_pred, dtype=DTYPE)
 
     it = np.nditer(y_pred, flags=["multi_index"], op_flags=["readwrite"])
 
@@ -49,7 +51,7 @@ def check_loss_gradient(loss_fn, y_pred, y_true, epsilon=1e-5, atol=1e-5):
     assert np.allclose(analytical_grad, numerical_grad, atol=atol), f"Gradient mismatch for loss {loss_fn.__class__.__name__}"
 
 
-def check_gradient(layer: Any, x: NDArray, y: NDArray, loss_fn: Any, epsilon: float = 1e-5, atol: float = 1e-5) -> None:
+def check_gradient(layer: Any, x: NDArray, y: NDArray, loss_fn: Any, epsilon: float = 1e-4, atol: float = 1e-2) -> None:
     """
     Helper function to perform numerical gradient checking for a layer's backward pass (dL/dX).
 
@@ -67,7 +69,7 @@ def check_gradient(layer: Any, x: NDArray, y: NDArray, loss_fn: Any, epsilon: fl
     analytical_grads_x = layer.backward(output_gradient)
 
     # 2. Calculate numerical gradient (the "true" gradient using finite differences)
-    numerical_grads_x = np.zeros_like(x)
+    numerical_grads_x = np.zeros_like(x, dtype=DTYPE)
 
     it = np.nditer(x, flags=["multi_index"], op_flags=["readwrite"])
     while not it.finished:

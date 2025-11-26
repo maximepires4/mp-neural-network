@@ -3,6 +3,7 @@ from collections.abc import Callable
 import numpy as np
 from numpy.typing import NDArray
 
+from . import DTYPE
 from .layers import Layer
 
 T = Callable[[NDArray], NDArray]
@@ -28,25 +29,31 @@ class Activation(Layer):
 
 class Tanh(Activation):
     def __init__(self):
-        super().__init__(np.tanh, lambda x: 1 - np.tanh(x) ** 2)
+        super().__init__(
+            lambda x: np.tanh(x, dtype=DTYPE),
+            lambda x: (1 - np.tanh(x, dtype=DTYPE) ** 2),
+        )
 
 
 class Sigmoid(Activation):
     def __init__(self):
         def sigmoid(x):
-            return 1 / (1 + np.exp(-x))
+            return 1 / (1 + np.exp(-x, dtype=DTYPE))
 
         super().__init__(lambda x: sigmoid(x), lambda x: sigmoid(x) * (1 - sigmoid(x)))
 
 
 class ReLU(Activation):
     def __init__(self):
-        super().__init__(lambda x: np.maximum(0, x), lambda x: x > 0)
+        super().__init__(lambda x: np.maximum(0, x, dtype=DTYPE), lambda x: x > 0)
 
 
 class PReLU(Activation):
     def __init__(self, alpha: float = 0.01):
-        super().__init__(lambda x: np.maximum(alpha * x, x), lambda x: np.where(x < 0, alpha, 1))
+        super().__init__(
+            lambda x: np.maximum(alpha * x, x, dtype=DTYPE),
+            lambda x: np.where(x < 0, alpha, 1),
+        )
         self.alpha: float = alpha
 
     def get_config(self) -> dict:
@@ -58,8 +65,8 @@ class PReLU(Activation):
 class Swish(Activation):
     def __init__(self):
         super().__init__(
-            lambda x: x / (1 + np.exp(-x)),
-            lambda x: (1 + np.exp(-x) + x * np.exp(-x)) / (1 + np.exp(-x)) ** 2,
+            lambda x: x / (1 + np.exp(-x, dtype=DTYPE)),
+            lambda x: (1 + np.exp(-x, dtype=DTYPE) + x * np.exp(-x, dtype=DTYPE)) / (1 + np.exp(-x, dtype=DTYPE)) ** 2,
         )
 
 
@@ -69,12 +76,12 @@ class Softmax(Layer):
 
     def forward(self, input_batch: NDArray, training: bool = True) -> NDArray:
         m = np.max(input_batch, axis=1, keepdims=True)
-        e = np.exp(input_batch - m)
-        self.output = e / np.sum(e, axis=1, keepdims=True)
+        e = np.exp(input_batch - m, dtype=DTYPE)
+        self.output = e / np.sum(e, axis=1, keepdims=True, dtype=DTYPE)
         return self.output
 
     def backward(self, output_gradient_batch: NDArray) -> NDArray:
-        sum_s_times_g: NDArray = np.sum(self.output * output_gradient_batch, axis=1, keepdims=True)
+        sum_s_times_g: NDArray = np.sum(self.output * output_gradient_batch, axis=1, keepdims=True, dtype=DTYPE)  # type: ignore[assignment]
 
         res: NDArray = self.output * (output_gradient_batch - sum_s_times_g)
         return res

@@ -4,6 +4,7 @@ from typing import Literal
 import numpy as np
 from numpy.typing import NDArray
 
+from . import DTYPE
 from .layers import Layer
 
 T = dict[int, NDArray]
@@ -46,7 +47,13 @@ class Optimizer:
 
 
 class SGD(Optimizer):
-    def __init__(self, learning_rate: float = 0.01, regularization: Lit_R = "L2", weight_decay: float = 0.001, momentum: float = 0.1) -> None:
+    def __init__(
+        self,
+        learning_rate: float = 0.01,
+        regularization: Lit_R = "L2",
+        weight_decay: float = 0.001,
+        momentum: float = 0.1,
+    ) -> None:
         super().__init__(learning_rate, regularization, weight_decay)
         self.momentum: float = momentum
 
@@ -63,7 +70,7 @@ class SGD(Optimizer):
                 p_id: int = id(param)
 
                 if p_id not in self.velocities:
-                    self.velocities[p_id] = np.zeros_like(param)
+                    self.velocities[p_id] = np.zeros_like(param, dtype=DTYPE)
 
                 self.velocities[p_id] = self.momentum * self.velocities[p_id] - self.learning_rate * grad
                 param += self.velocities[p_id]
@@ -80,7 +87,12 @@ class SGD(Optimizer):
 
 class RMSprop(Optimizer):
     def __init__(
-        self, learning_rate: float = 0.001, regularization: Lit_R = "L2", weight_decay: float = 0.001, decay_rate: float = 0.9, epsilon: float = 1e-8
+        self,
+        learning_rate: float = 0.001,
+        regularization: Lit_R = "L2",
+        weight_decay: float = 0.001,
+        decay_rate: float = 0.9,
+        epsilon: float = 1e-8,
     ) -> None:
         super().__init__(learning_rate, regularization, weight_decay)
         self.decay_rate: float = decay_rate
@@ -99,9 +111,9 @@ class RMSprop(Optimizer):
                 p_id: int = id(param)
 
                 if p_id not in self.cache:
-                    self.cache[p_id] = np.zeros_like(param)
+                    self.cache[p_id] = np.zeros_like(param, dtype=DTYPE)
 
-                self.cache[p_id] = self.decay_rate * self.cache[p_id] + (1 - self.decay_rate) * np.power(grad, 2)
+                self.cache[p_id] = self.decay_rate * self.cache[p_id] + (1 - self.decay_rate) * np.square(grad)
 
                 param -= self.learning_rate * grad / np.sqrt(self.cache[p_id] + self.epsilon)
 
@@ -148,11 +160,11 @@ class Adam(Optimizer):
                 p_id: int = id(param)
 
                 if p_id not in self.momentums:
-                    self.momentums[p_id] = np.zeros_like(param)
-                    self.velocities[p_id] = np.zeros_like(param)
+                    self.momentums[p_id] = np.zeros_like(param, dtype=DTYPE)
+                    self.velocities[p_id] = np.zeros_like(param, dtype=DTYPE)
 
                 self.momentums[p_id] = self.beta1 * self.momentums[p_id] + (1 - self.beta1) * grad
-                self.velocities[p_id] = self.beta2 * self.velocities[p_id] + (1 - self.beta2) * np.power(grad, 2)
+                self.velocities[p_id] = self.beta2 * self.velocities[p_id] + (1 - self.beta2) * np.square(grad)
 
                 m_hat = self.momentums[p_id] / (1 - self.beta1**self.t)
                 v_hat = self.velocities[p_id] / (1 - self.beta2**self.t)

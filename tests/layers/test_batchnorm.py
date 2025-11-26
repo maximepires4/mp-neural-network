@@ -46,4 +46,4 @@ def test_bn_gradient_check():
     layer.gamma = np.random.randn(1, n_features)
     layer.beta = np.random.randn(1, n_features)
 
-    check_gradient(layer, X, Y, loss_fn, atol=1e-3)
+    check_gradient(layer, X, Y, loss_fn)

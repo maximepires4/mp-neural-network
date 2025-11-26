@@ -1,5 +1,6 @@
 import numpy as np
 
+from mpneuralnetwork import DTYPE
 from mpneuralnetwork.layers import Dropout
 from mpneuralnetwork.losses import MSE
 
@@ -29,8 +30,8 @@ def test_dropout_gradient():
     layer = Dropout(probability=0.5)
     loss_fn = MSE()
 
-    X = np.random.randn(batch_size, n_features)
-    Y = np.random.randn(batch_size, n_features)
+    X = np.random.randn(batch_size, n_features).astype(DTYPE)
+    Y = np.random.randn(batch_size, n_features).astype(DTYPE)
 
     # --- Analytical Gradient ---
     preds = layer.forward(X.copy(), training=True)
@@ -39,8 +40,8 @@ def test_dropout_gradient():
 
     # --- Numerical Gradient ---
     fixed_mask = layer.mask
-    epsilon = 1e-5
-    numerical_grads = np.zeros_like(X)
+    epsilon = 1e-3
+    numerical_grads = np.zeros_like(X, dtype=DTYPE)
 
     it = np.nditer(X, flags=["multi_index"], op_flags=["readwrite"])
     while not it.finished:
@@ -59,4 +60,4 @@ def test_dropout_gradient():
         numerical_grads[ix] = (loss_plus - loss_minus) / (2 * epsilon)
         it.iternext()
 
-    assert np.allclose(analytical_grads, numerical_grads, atol=epsilon), "Dropout gradient does not match"
+    assert np.allclose(analytical_grads, numerical_grads, atol=1e-2), "Dropout gradient does not match"

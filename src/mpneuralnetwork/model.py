@@ -3,6 +3,7 @@ from numpy.typing import NDArray
 
 from mpneuralnetwork.metrics import RMSE, Accuracy, F1Score, Metric, R2Score
 
+from . import DTYPE
 from .activations import Activation, PReLU, ReLU, Sigmoid, Softmax, Swish
 from .layers import BatchNormalization, Convolutional, Dense, Dropout, Layer, Lit_W
 from .losses import MSE, BinaryCrossEntropy, CategoricalCrossEntropy, Loss
@@ -10,7 +11,13 @@ from .optimizers import SGD, Adam, Optimizer
 
 
 class Model:
-    def __init__(self, layers: list[Layer], loss: Loss, optimizer: Optimizer | None = None, metrics: list[Metric] | None = None) -> None:
+    def __init__(
+        self,
+        layers: list[Layer],
+        loss: Loss,
+        optimizer: Optimizer | None = None,
+        metrics: list[Metric] | None = None,
+    ) -> None:
         self.layers: list[Layer] = layers
         self.loss: Loss = loss
         self.optimizer: Optimizer = SGD() if optimizer is None else optimizer
@@ -99,8 +106,8 @@ class Model:
         model_checkpoint: bool = True,
         compute_train_metrics: bool = False,
     ) -> None:
-        X_copy: NDArray = np.copy(X_train)
-        y_copy: NDArray = np.copy(y_train)
+        X_copy: NDArray = np.array(X_train, dtype=DTYPE, copy=True)
+        y_copy: NDArray = np.array(y_train, dtype=DTYPE, copy=True)
 
         permutation: NDArray
         if evaluation is None and auto_evaluation != 0:
@@ -138,7 +145,12 @@ class Model:
                 X_batch: NDArray = X_copy[batch_idx]
                 y_batch: NDArray = y_copy[batch_idx]
 
-                predictions, new_metric_dict = self.evaluate(X_batch, y_batch, training=True, compute_metrics=compute_train_metrics)
+                predictions, new_metric_dict = self.evaluate(
+                    X_batch,
+                    y_batch,
+                    training=True,
+                    compute_metrics=compute_train_metrics,
+                )
 
                 for key, value in new_metric_dict.items():
                     metric_dict[key] += value
@@ -197,8 +209,14 @@ class Model:
             print(f"MODEL CHECKPOINT: {best_error:.4f}")
             # TODO: Save also optimizer state, better user output
 
-    def evaluate(self, X: NDArray, y: NDArray, training: bool = False, compute_metrics: bool = True) -> tuple[NDArray, dict[str, float]]:
-        logits: NDArray = np.copy(X)
+    def evaluate(
+        self,
+        X: NDArray,
+        y: NDArray,
+        training: bool = False,
+        compute_metrics: bool = True,
+    ) -> tuple[NDArray, dict[str, float]]:
+        logits: NDArray = np.array(X, dtype=DTYPE, copy=True)
         for layer in self.layers:
             logits = layer.forward(logits, training=training)
 
@@ -234,7 +252,7 @@ class Model:
             print(f"   {key} = {value:.4f}")
 
     def predict(self, input: NDArray) -> NDArray:
-        output: NDArray = np.copy(input)
+        output: NDArray = np.array(input, dtype=DTYPE, copy=True)
         for layer in self.layers:
             output = layer.forward(output, training=False)
 
@@ -251,7 +269,7 @@ class Model:
                     p_id: int = id(l_param)
                     logical_name: str = f"layer_{i}_{l_param_name}"
 
-                    weights_dict[logical_name] = np.copy(l_param)
+                    weights_dict[logical_name] = np.array(l_param, dtype=DTYPE, copy=True)
 
                     if not optimizer_params:
                         continue
@@ -260,12 +278,12 @@ class Model:
                         if not isinstance(o_param, dict):
                             continue
                         if p_id in o_param:
-                            weights_dict[f"optimizer_{o_param_name}_{logical_name}"] = np.copy(o_param[p_id])
+                            weights_dict[f"optimizer_{o_param_name}_{logical_name}"] = np.array(o_param[p_id], dtype=DTYPE, copy=True)
 
             if hasattr(layer, "state"):
                 for l_state_name, l_state_val in layer.state.items():
                     logical_name = f"layer_{i}_state_{l_state_name}"
-                    weights_dict[logical_name] = np.copy(l_state_val)
+                    weights_dict[logical_name] = np.array(l_state_val, dtype=DTYPE, copy=True)
 
         return weights_dict
 
@@ -292,7 +310,7 @@ class Model:
                             key = f"optimizer_{o_param_name}_{logical_name}"
                             if key in weights_dict:
                                 if p_id not in o_param:
-                                    o_param[p_id] = np.zeros_like(l_param)
+                                    o_param[p_id] = np.zeros_like(l_param, dtype=DTYPE)
                                 np.copyto(o_param[p_id], weights_dict[key])
 
             if hasattr(layer, "state"):

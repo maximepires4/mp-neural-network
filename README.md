@@ -197,6 +197,25 @@ A common confusion in Deep Learning libraries is the difference between **Adam +
 
 This design means that by simply setting `optimizer=Adam(regularization='L2')`, you are effectively using **AdamW**, the state-of-the-art optimizer for training modern deep networks.
 
+## **Benchmarking & Profiling**
+
+To verify performance improvements (like `im2col` or `float32` optimization), the project includes a comprehensive benchmarking suite located in `benchmark/`.
+
+### **Running Benchmarks**
+A utility script automates the execution of all benchmarks, profiling both **CPU Time** (via `cProfile`) and **Memory Usage** (via `memray`).
+
+```bash
+# Run all benchmarks (generates .prof, .bin, and .html flamegraphs in output/benchmark_TIMESTAMP)
+python benchmark/run_benchmarks.py
+```
+
+### **Comparing Performance**
+You can compare two different runs (e.g., before and after an optimization) to see regression/improvements:
+
+```bash
+python benchmark/run_benchmarks.py --before output/benchmark_OLD --after output/benchmark_NEW
+```
+
 ## **Roadmap**
 
 * [x] **Batch Vectorization**
@@ -209,7 +228,7 @@ This design means that by simply setting `optimizer=Adam(regularization='L2')`, 
 * [x] **Training Utils:** Early Stopping, Checkpointing, Auto-Metrics.
 * [x] **Pooling Layers:** MaxPool / AvgPool.
 * [x] **BatchNormalization:** 1D (Dense) and 2D (Spatial/CNN).
-* [ ] **Memory Optimization:** In-place operations to reduce RAM usage.
+* [ ] **Memory Optimization:** In-place operations, reduced copies, global float32.
 * [ ] **Training Loop Optimization:** Shuffle indices instead of data to improve speed.
 
 ## **Author**

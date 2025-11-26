@@ -2,6 +2,8 @@ import numpy as np
 from numpy.lib.stride_tricks import sliding_window_view
 from numpy.typing import NDArray
 
+from .. import DTYPE
+
 
 def im2col(input_batch: NDArray, window_size: int, stride: int | None = None) -> NDArray:
     windows = sliding_window_view(input_batch, window_shape=(window_size, window_size), axis=(2, 3))  # type: ignore[call-overload]
@@ -12,11 +14,17 @@ def im2col(input_batch: NDArray, window_size: int, stride: int | None = None) ->
     return windows.transpose(0, 2, 3, 1, 4, 5)  # type: ignore[no-any-return]
 
 
-def col2im(cols: NDArray, input_shape: tuple[int, ...], output_shape: tuple[int, ...], window_size: int, stride: int = 1) -> NDArray:
+def col2im(
+    cols: NDArray,
+    input_shape: tuple[int, ...],
+    output_shape: tuple[int, ...],
+    window_size: int,
+    stride: int = 1,
+) -> NDArray:
     _, H_out, W_out = output_shape
     K = window_size
 
-    im = np.zeros(input_shape)
+    im = np.zeros(input_shape, dtype=DTYPE)
 
     for i in range(K):
         for j in range(K):

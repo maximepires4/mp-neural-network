@@ -3,6 +3,8 @@ from abc import abstractmethod
 import numpy as np
 from numpy.typing import NDArray
 
+from mpneuralnetwork import DTYPE
+
 
 class Metric:
     def get_config(self) -> dict:
@@ -15,15 +17,16 @@ class Metric:
 
 class RMSE(Metric):
     def __call__(self, y_true: NDArray, y_pred: NDArray) -> float:
-        return self.from_mse(np.mean(np.sum(np.square(y_true - y_pred), axis=1)))
+        mse = np.mean(np.sum(np.square(y_true - y_pred), axis=1, dtype=DTYPE), dtype=DTYPE)
+        return self.from_mse(float(mse))
 
     def from_mse(self, mse: float) -> float:
-        return float(np.sqrt(mse))
+        return float(np.sqrt(mse, dtype=DTYPE))
 
 
 class MAE(Metric):
     def __call__(self, y_true: NDArray, y_pred: NDArray) -> float:
-        return float(np.mean(np.sum(np.abs(y_true - y_pred), axis=1)))
+        return float(np.mean(np.sum(np.abs(y_true - y_pred), axis=1, dtype=DTYPE), dtype=DTYPE))
 
 
 class R2Score(Metric):
@@ -36,8 +39,8 @@ class R2Score(Metric):
         return config
 
     def __call__(self, y_true: NDArray, y_pred: NDArray) -> float:
-        var_tp = np.sum(np.square(y_true - y_pred))
-        var_tm = np.sum(np.square(y_true - np.mean(y_true, axis=0)))
+        var_tp = np.sum(np.square(y_true - y_pred), dtype=DTYPE)
+        var_tm = np.sum(np.square(y_true - np.mean(y_true, axis=0, dtype=DTYPE)), dtype=DTYPE)
 
         return float(1 - var_tp / (var_tm + self.epsilon))
 
@@ -50,7 +53,7 @@ class Accuracy(Metric):
         else:
             y_pred = np.round(y_pred)
 
-        return float(np.mean(y_true == y_pred))
+        return float(np.mean(y_true == y_pred, dtype=DTYPE))
 
 
 class Precision(Metric):
@@ -62,7 +65,13 @@ class Precision(Metric):
         config.update({"epsilon": self.epsilon})
         return config
 
-    def __call__(self, y_true: NDArray, y_pred: NDArray, num_classes: int = 1, no_check: bool = False) -> float:
+    def __call__(
+        self,
+        y_true: NDArray,
+        y_pred: NDArray,
+        num_classes: int = 1,
+        no_check: bool = False,
+    ) -> float:
         if not no_check:
             num_classes = y_true.shape[1]
             if y_true.ndim == 2 and num_classes > 1:
@@ -71,14 +80,14 @@ class Precision(Metric):
             else:
                 y_pred = np.round(y_pred)
 
-        sum: float = 0
+        sum_score: float = 0
         for c in range(num_classes):
             tp = np.sum((y_pred == c) & (y_true == c))
             fp = np.sum((y_pred == c) & (y_true != c))
 
-            sum += tp / (tp + fp + self.epsilon)
+            sum_score += tp / (tp + fp + self.epsilon)
 
-        return sum / num_classes
+        return sum_score / num_classes
 
 
 class Recall(Metric):
@@ -90,7 +99,13 @@ class Recall(Metric):
         config.update({"epsilon": self.epsilon})
         return config
 
-    def __call__(self, y_true: NDArray, y_pred: NDArray, num_classes: int = 1, no_check: bool = False) -> float:
+    def __call__(
+        self,
+        y_true: NDArray,
+        y_pred: NDArray,
+        num_classes: int = 1,
+        no_check: bool = False,
+    ) -> float:
         if not no_check:
             num_classes = y_true.shape[1]
             if y_true.ndim == 2 and num_classes > 1:
@@ -99,13 +114,13 @@ class Recall(Metric):
             else:
                 y_pred = np.round(y_pred)
 
-        sum: float = 0
+        sum_score: float = 0
         for c in range(num_classes):
             tp = np.sum((y_pred == c) & (y_true == c))
             fn = np.sum((y_pred != c) & (y_true == c))
-            sum += tp / (tp + fn + self.epsilon)
+            sum_score += tp / (tp + fn + self.epsilon)
 
-        return sum / num_classes
+        return sum_score / num_classes
 
 
 class F1Score(Metric):
@@ -149,4 +164,4 @@ class TopKAccuracy(Metric):
 
         y_true = y_true.reshape(-1, 1)
 
-        return float(np.mean(np.any(top_k_preds == y_true, axis=1)))
+        return float(np.mean(np.any(top_k_preds == y_true, axis=1), dtype=DTYPE))
