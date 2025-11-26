@@ -97,6 +97,7 @@ class Model:
         auto_evaluation: float = 0.2,
         early_stopping: int | None = None,
         model_checkpoint: bool = True,
+        compute_train_metrics: bool = False,
     ) -> None:
         X_copy: NDArray = np.copy(X_train)
         y_copy: NDArray = np.copy(y_train)
@@ -125,20 +126,19 @@ class Model:
             metric_dict: dict[str, float] = {}
             metric_dict["loss"] = 0
 
-            for metric in self.metrics:
-                metric_dict[metric.__class__.__name__.lower()] = 0
+            if compute_train_metrics:
+                for metric in self.metrics:
+                    metric_dict[metric.__class__.__name__.lower()] = 0
 
-            permutation = np.random.permutation(num_samples)
-            X_shuffled = X_copy[permutation]
-            y_shuffled = y_copy[permutation]
+            indices = np.arange(num_samples)
+            np.random.shuffle(indices)
 
             for i in range(num_batches):
-                start: int = i * batch_size
-                end: int = (i + 1) * batch_size
-                X_batch: NDArray = X_shuffled[start:end]
-                y_batch: NDArray = y_shuffled[start:end]
+                batch_idx = indices[i * batch_size : (i + 1) * batch_size]
+                X_batch: NDArray = X_copy[batch_idx]
+                y_batch: NDArray = y_copy[batch_idx]
 
-                predictions, new_metric_dict = self.evaluate(X_batch, y_batch, training=True)
+                predictions, new_metric_dict = self.evaluate(X_batch, y_batch, training=True, compute_metrics=compute_train_metrics)
 
                 for key, value in new_metric_dict.items():
                     metric_dict[key] += value
@@ -197,7 +197,7 @@ class Model:
             print(f"MODEL CHECKPOINT: {best_error:.4f}")
             # TODO: Save also optimizer state, better user output
 
-    def evaluate(self, X: NDArray, y: NDArray, training=False) -> tuple[NDArray, dict[str, float]]:
+    def evaluate(self, X: NDArray, y: NDArray, training: bool = False, compute_metrics: bool = True) -> tuple[NDArray, dict[str, float]]:
         logits: NDArray = np.copy(X)
         for layer in self.layers:
             logits = layer.forward(logits, training=training)
@@ -207,21 +207,22 @@ class Model:
         metric_dict: dict[str, float] = {}
         metric_dict["loss"] = loss
 
-        predictions_metrics: NDArray = logits
+        predictions_activated: NDArray = logits
         if self.output_activation is not None:
-            predictions_metrics = self.output_activation.forward(logits)
+            predictions_activated = self.output_activation.forward(logits)
 
-        for metric in self.metrics:
-            key = metric.__class__.__name__.lower()
+        if compute_metrics:
+            for metric in self.metrics:
+                key = metric.__class__.__name__.lower()
 
-            if isinstance(metric, RMSE) and isinstance(self.loss, MSE):
-                metric_dict[key] = metric.from_mse(loss)
-            else:
-                metric_dict[key] = metric(y, predictions_metrics)
+                if isinstance(metric, RMSE) and isinstance(self.loss, MSE):
+                    metric_dict[key] = metric.from_mse(loss)
+                else:
+                    metric_dict[key] = metric(y, predictions_activated)
 
         predictions: NDArray = logits
         if not training:
-            predictions = predictions_metrics
+            predictions = predictions_activated
 
         return predictions, metric_dict
 
