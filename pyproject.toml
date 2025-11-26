@@ -48,6 +48,11 @@ dev = [
     "types-setuptools"
 ]
 
+profile = [
+  "snakeviz",
+  "memray"
+]
+
 [tool.ruff]
 line-length = 150
 target-version = "py312"
@@ -61,10 +66,11 @@ known-first-party = ["mpneuralnetwork"]
 
 [tool.mypy]
 python_version = "3.12"
-files = ["src/mpneuralnetwork", "example"]
+files = ["src/mpneuralnetwork", "example", "benchmark"]
 exclude = ["tests"]
 warn_return_any = true
 warn_unused_configs = true
+explicit_package_bases = true
 disallow_untyped_defs = false
 check_untyped_defs = true
 ignore_missing_imports = true  # Utile pour scipy/numpy si stubs manquants
