@@ -192,7 +192,6 @@ class Model:
 
         if model_checkpoint and best_weights is not None:
             self.restore_weights(best_weights)
-            print(temp_t)
             if isinstance(self.optimizer, Adam):
                 self.optimizer.t = temp_t
             print(f"MODEL CHECKPOINT: {best_error:.4f}")

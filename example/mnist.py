@@ -1,4 +1,3 @@
-import random
 from pathlib import Path
 
 import numpy as np
@@ -15,7 +14,6 @@ if __name__ == "__main__":
     print("Classification example: MNIST Dataset")
     seed = 69
     np.random.seed(seed)
-    random.seed(seed)
 
     print("Loading data...")
     (X_train, y_train), (X_val, y_val), (X_test, y_test) = load_mnist()
