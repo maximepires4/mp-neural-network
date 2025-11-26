@@ -8,6 +8,7 @@
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue?style=flat-square&logo=python&logoColor=white)
 ![Build Status](https://img.shields.io/badge/build-passing-brightgreen?style=flat-square)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+![Status](https://img.shields.io/badge/Status-Beta-orange?style=flat-square)
 
 **A fully vectorized Deep Learning framework built from scratch using only NumPy.**
 
@@ -21,16 +22,17 @@ By rebuilding the engine from the ground up, I aimed to bridge the gap between t
 ## **Key Objectives:**
 
 1. **Mathematical Rigor:** Implementing backpropagation, chain rule derivatives, and loss functions manually.
-2. **Performance Optimization:** Moving from naive scalar loops to **fully vectorized matrix operations** (Batch Processing) to significantly accelerate training times.
+2. **Performance Optimization:** Moving from naive scalar loops to **fully vectorized matrix operations** (Batch Processing) and implementing **`im2col`** for convolutions to significantly accelerate training times.
 3. **Software Architecture:** Applying **SOLID principles** to decouple Layers, Optimizers, and Loss functions for a modular design.
 
 ## **Key Features: Smart & Efficient**
 
 MPNeuralNetwork goes beyond basic matrix operations by incorporating an **"intelligent" engine** that automates Deep Learning best practices.
 
-* **Fully Vectorized:** Optimized for batch processing using NumPy broadcasting for maximum performance.
+* **Fully Vectorized & Optimized:** Optimized for batch processing using NumPy broadcasting. Convolutions use **`im2col` vectorization**, transforming loops into matrix multiplications for hardware acceleration (BLAS/MKL).
 * **Early Stopping & Checkpointing:** The training loop automatically monitors validation performance. It stops training early if the model stops learning and **automatically restores the best weights** found during training, ensuring you always get the most generalized model.
 * **Intelligent Weight Initialization:** The model analyzes your network architecture (specifically the activation functions) and automatically applies the optimal initialization strategy (**He Initialization** for ReLU, **Xavier/Glorot** for Sigmoid/Tanh), removing the guesswork.
+* **Comprehensive Regularization:** Supports **Dropout** layers as well as **L1 and L2 Weight Decay** integrated directly into all optimizers (SGD, Adam, RMSprop).
 * **Numerical Stability (Auto-Logits):** The framework detects classification tasks and internally handles logits for `Softmax` or `Sigmoid`, preventing numerical overflow/underflow issues common in naive implementations.
 * **Auto-Validation Split:** Simply pass `auto_evaluation=0.2` to automatically set aside 20% of your data for validation, without manual array slicing.
 * **Full Serialization:** Save and load your entire model state (weights, architecture, optimizer momentum) to resume training later.
@@ -39,12 +41,15 @@ MPNeuralNetwork goes beyond basic matrix operations by incorporating an **"intel
 
 | Component | Details |
 | :---- | :---- |
-| **Layers** | `Dense`, `Convolutional` (Conv2D), `Dropout`, `Reshape`, `BatchNormalization` |
+| **Layers** | `Dense`, `Convolutional` (Conv2D), `Dropout`, `Flatten`, `BatchNormalization` (1D & 2D), `MaxPooling2D`, `AveragePooling2D` |
 | **Activations** | `ReLU`, `Sigmoid`, `Tanh`, `Softmax`, `PReLU`, `Swish` |
 | **Loss Functions** | `MSE` (Regression), `BinaryCrossEntropy`, `CategoricalCrossEntropy` (Logits optimized) |
-| **Optimizers** | `SGD` (with Momentum), `RMSprop`, `Adam` |
+| **Metrics** | `RMSE`, `MAE`, `R2Score`, `Accuracy`, `Precision`, `Recall`, `F1Score`, `TopKAccuracy` |
+| **Optimizers** | `SGD` (with Momentum), `RMSprop`, `Adam`, `AdamW`) |
 
 ## **Installation**
+
+### **From PyPI**
 
 You can install the package directly from PyPI:
 
@@ -52,11 +57,21 @@ You can install the package directly from PyPI:
 pip install mpneuralnetwork
 ```
 
-Or clone the repository to work on the source code.
+### **From source**
+
+To experiment with the code or run the examples:
+
+```bash
+git clone https://github.com/maximepires4/mp-neural-network.git
+cd mp-neural-network
+pip install -e .
+```
+
+*Note: The only hard dependency is `numpy`. `pandas` is optional for running certain examples.*
 
 ## **Usage Examples**
 
-### **1. Classic MNIST Classification (MLP)**
+### **1. Classic MNIST Classification**
 
 The API is designed to be declarative and intuitive.
 
@@ -69,19 +84,18 @@ from mpneuralnetwork.optimizers import Adam
 from mpneuralnetwork.model import Model
 
 # 1. Define the Architecture
-# Note: We use 'auto' initialization and NO final Softmax layer (handled by loss).
 network = [
-    Dense(784, 128, initialization='auto'), # Automatically uses He init
+    Dense(128, input_size=784), # Automatically uses He init
     ReLU(),
-    Dropout(0.2),                           # Regularization
-    Dense(128, 10, initialization='auto')   # Output Logits
+    Dropout(0.2),               # Regularization
+    Dense(128, 10)              # Output Logits
 ]
 
 # 2. Initialize the Model
 model = Model(
     layers=network,
     loss=CategoricalCrossEntropy(),
-    optimizer=Adam(learning_rate=0.001)
+    optimizer=Adam(learning_rate=0.001) # L2 Regularization is default
 )
 
 # 3. Train (Vectorized) with Auto-Evaluation
@@ -101,23 +115,27 @@ model.train(
 predictions = model.predict(X_test)
 ```
 
-### **2. Convolutional Neural Network (CNN)**
+### **2. Convolutional Neural Network**
 
-Support for 2D Convolutions for image processing tasks.
+Support for 2D Convolutions, Pooling, and Batch Normalization.
 
 ```python
-from mpneuralnetwork.layers import Convolutional, Reshape, Dense
-from mpneuralnetwork.activations import ReLU, Softmax
+from mpneuralnetwork.layers import Convolutional, Flatten, Dense, MaxPooling2D, BatchNormalization2D
+from mpneuralnetwork.activations import ReLU
 
 cnn_network = [
     # Input: (Batch, 1, 28, 28) -> Output: (Batch, 32, 26, 26)
-    Convolutional(input_shape=(1, 28, 28), kernels_count=32, kernel_size=3),
+    Convolutional(input_shape=(1, 28, 28), output_depth=32, kernel_size=3),
+    BatchNormalization2D(),
     ReLU(),
 
-    # Flatten: (Batch, 32 * 26 * 26)
-    Reshape((-1, 32 * 26 * 26)),
+    # Pooling: (Batch, 32, 13, 13)
+    MaxPooling2D(pool_size=2, strides=2),
 
-    Dense(32 * 26 * 26, 100),
+    # Flatten: (Batch, 32 * 13 * 13)
+    Flatten(),
+
+    Dense(32 * 13 * 13, 100),
     ReLU(),
     Dense(100, 10)
 ]
@@ -125,17 +143,31 @@ cnn_network = [
 model = Model(layers=cnn_network, ...)
 ```
 
-### **3. Saving & Loading Models**
+### **3. Regression Example**
 
-You can save the entire model state (weights, architecture, optimizer config) and reload it later.
+The framework supports regression tasks with MSE loss and relevant metrics.
 
 ```python
-# Save
-model.save("my_model") # Creates my_model.npz
+from mpneuralnetwork.losses import MSE
+from mpneuralnetwork.metrics import RMSE, R2Score
 
-# Load
-loaded_model = Model.load("my_model")
-loaded_model.predict(X_test)
+# Architecture for regression
+reg_network = [
+    Dense(13, 64),
+    ReLU(),
+    Dense(64, 32),
+    ReLU(),
+    Dense(32, 1) # Linear output
+]
+
+model = Model(
+    layers=reg_network,
+    loss=MSE(),
+    optimizer=Adam(learning_rate=0.01),
+    metrics=[RMSE(), R2Score()] # Track multiple metrics
+)
+
+model.train(X_train, y_train, epochs=100, batch_size=16)
 ```
 
 ## **Architecture & Design Decisions**
@@ -145,7 +177,7 @@ loaded_model.predict(X_test)
 Early versions of the library used loops to iterate over samples one by one. This was identified as a major bottleneck.
 
 * **Refactoring:** I completely rewrote the main training loop (`Model.train`) and the forward/backward methods of all layers to handle 3D/2D tensors of shape `(batch_size, features)`.
-* **Result:** On the MNIST dataset, training time for 10 epochs dropped from **452s to 119s** (~4x speedup).
+* **Convolutional Optimization:** The `Convolutional` layer uses the **`im2col` (image-to-column)** technique. This transforms the sliding window convolution into a large matrix multiplication, allowing NumPy (and underlying BLAS libraries) to parallelize the operation efficiently.
 
 ### **2\. Decoupling Layers & Optimizers (SRP)**
 
@@ -154,18 +186,16 @@ To avoid "God Classes", I strictly separated the responsibility of **calculating
 * **The Layer's Job:** It computes `dE/dW` (gradient) during the backward pass.
 * **The Optimizer's Job:** The Optimizer class iterates over the layers, retrieves parameters via `layer.params`, and applies the update rule (keeping track of momentum/velocity if needed).
 
-```python
-# Simplified logic from optimizers.py
-class SGD(Optimizer):
-    def step(self, layers):
-        for layer in layers:
-            if not hasattr(layer, 'params'): continue
+### **3. Unified Optimizer Design (Adam vs AdamW)**
 
-            # We use id(param) to track states (velocity) for specific weights
-            for _, (param, grad) in layer.params.items():
-                # Update logic...
-                param -= self.learning_rate * grad
-```
+A common confusion in Deep Learning libraries is the difference between **Adam + L2 Regularization** and **AdamW** (Decoupled Weight Decay).
+
+* **Standard Approach:** Usually, L2 regularization is added to the loss function, meaning its gradient is added to the backpropagated gradient. In adaptive methods like Adam, this means the regularization term is effectively scaled by the inverse of the gradient variance, which can be suboptimal.
+* **My Implementation:**
+  * **L1 Regularization** follows the standard approach (added to gradients) to promote sparsity.
+  * **L2 Regularization** is implemented as **Decoupled Weight Decay (AdamW)**. The decay is applied directly to the weights *after* the adaptive update step.
+
+This design means that by simply setting `optimizer=Adam(regularization='L2')`, you are effectively using **AdamW**, the state-of-the-art optimizer for training modern deep networks.
 
 ## **Roadmap**
 
@@ -173,12 +203,14 @@ class SGD(Optimizer):
 * [x] **Numerical Stability Fixes (Logits)**
 * [x] **Advanced Optimizers:** Adam, RMSprop, SGD Momentum.
 * [x] **Smart Initialization:** Auto He/Xavier.
-* [x] **Regularization:** Dropout Layer.
-* [x] **Convolutional Layers:** Conv2D implementation.
+* [x] **Regularization:** Dropout Layer & L1/L2 Weight Decay.
+* [x] **Convolutional Layers:** Conv2D implementation with `im2col`.
 * [x] **Model Serialization:** Saving/Loading weights to JSON/Pickle.
-* [x] **Training Utils:** Early Stopping, Checkpointing.
-* [ ] **Pooling Layers:** MaxPool / AvgPool.
-* [ ] **Convolutional Optimization:** Implementation of `im2col` for faster CNNs.
+* [x] **Training Utils:** Early Stopping, Checkpointing, Auto-Metrics.
+* [x] **Pooling Layers:** MaxPool / AvgPool.
+* [x] **BatchNormalization:** 1D (Dense) and 2D (Spatial/CNN).
+* [ ] **Memory Optimization:** In-place operations to reduce RAM usage.
+* [ ] **Training Loop Optimization:** Shuffle indices instead of data to improve speed.
 
 ## **Author**
 
