@@ -64,11 +64,9 @@ class Dense(Layer):
     def forward(self, input_batch: NDArray, training: bool = True) -> NDArray:
         self.input = input_batch
 
-        res: NDArray
-        if self.no_bias:
-            res = self.input @ self.weights
-        else:
-            res = self.input @ self.weights + self.biases
+        res: NDArray = self.input @ self.weights
+        if not self.no_bias:
+            res += self.biases
         return res
 
     def backward(self, output_gradient_batch: NDArray) -> NDArray:
@@ -171,7 +169,8 @@ class BatchNormalization(Layer):
         self.x_centered = self.input - mean
         self.x_norm = self.x_centered * self.std_inv
 
-        res: NDArray = self.x_norm * self.gamma + self.beta
+        res: NDArray = self.x_norm * self.gamma
+        res += self.beta
         return res
 
     def backward(self, output_gradient_batch: NDArray) -> NDArray:

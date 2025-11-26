@@ -72,7 +72,15 @@ class SGD(Optimizer):
                 if p_id not in self.velocities:
                     self.velocities[p_id] = np.zeros_like(param, dtype=DTYPE)
 
-                self.velocities[p_id] = self.momentum * self.velocities[p_id] - self.learning_rate * grad
+                # Velocity Update: v = momentum * v - lr * grad
+
+                # 1. v *= momentum (in-place)
+                np.multiply(self.velocities[p_id], self.momentum, out=self.velocities[p_id])
+
+                # 2. v -= lr * grad
+                self.velocities[p_id] -= self.learning_rate * grad
+
+                # Parameter Update: w += v
                 param += self.velocities[p_id]
 
     def get_config(self) -> dict:
@@ -100,7 +108,7 @@ class RMSprop(Optimizer):
 
         self.cache: T = {}
 
-    def step(self, layers) -> None:
+    def step(self, layers: list[Layer]) -> None:
         for layer in layers:
             if not hasattr(layer, "params"):
                 continue
@@ -113,9 +121,23 @@ class RMSprop(Optimizer):
                 if p_id not in self.cache:
                     self.cache[p_id] = np.zeros_like(param, dtype=DTYPE)
 
-                self.cache[p_id] = self.decay_rate * self.cache[p_id] + (1 - self.decay_rate) * np.square(grad)
+                # Cache Update: cache = decay * cache + (1 - decay) * grad^2
 
-                param -= self.learning_rate * grad / np.sqrt(self.cache[p_id] + self.epsilon)
+                # 1. cache *= decay (in-place)
+                np.multiply(self.cache[p_id], self.decay_rate, out=self.cache[p_id])
+
+                # 2. cache += (1 - decay) * grad^2
+                self.cache[p_id] += (1 - self.decay_rate) * np.square(grad)
+
+                # Parameter Update: w -= lr * grad / (sqrt(cache) + epsilon)
+
+                # 1. Denominator = sqrt(cache) + epsilon
+                denom = np.sqrt(self.cache[p_id])
+                np.add(denom, self.epsilon, out=denom)
+
+                # 2. Update = lr * grad / denom
+                # w -= update
+                param -= self.learning_rate * grad / denom
 
     def get_config(self) -> dict:
         config = super().get_config()
@@ -146,7 +168,7 @@ class Adam(Optimizer):
         self.momentums: T = {}
         self.velocities: T = {}
 
-    def step(self, layers) -> None:
+    def step(self, layers: list[Layer]) -> None:
         self.t += 1
 
         for layer in layers:
@@ -163,13 +185,45 @@ class Adam(Optimizer):
                     self.momentums[p_id] = np.zeros_like(param, dtype=DTYPE)
                     self.velocities[p_id] = np.zeros_like(param, dtype=DTYPE)
 
-                self.momentums[p_id] = self.beta1 * self.momentums[p_id] + (1 - self.beta1) * grad
-                self.velocities[p_id] = self.beta2 * self.velocities[p_id] + (1 - self.beta2) * np.square(grad)
+                # --- 1. Update Momentum (First Moment) ---
+                # m = beta1 * m + (1 - beta1) * grad
 
-                m_hat = self.momentums[p_id] / (1 - self.beta1**self.t)
-                v_hat = self.velocities[p_id] / (1 - self.beta2**self.t)
+                # m *= beta1
+                np.multiply(self.momentums[p_id], self.beta1, out=self.momentums[p_id])
+                # m += (1 - beta1) * grad
+                self.momentums[p_id] += (1 - self.beta1) * grad
 
-                param -= self.learning_rate * m_hat / (np.sqrt(v_hat) + self.epsilon)
+                # --- 2. Update Velocity (Second Moment) ---
+                # v = beta2 * v + (1 - beta2) * grad^2
+
+                # v *= beta2
+                np.multiply(self.velocities[p_id], self.beta2, out=self.velocities[p_id])
+                # v += (1 - beta2) * grad^2
+                self.velocities[p_id] += (1 - self.beta2) * np.square(grad)
+
+                # --- 3. Bias Correction ---
+                # m_hat = m / (1 - beta1^t)
+                # v_hat = v / (1 - beta2^t)
+
+                bias_correction1 = 1 - self.beta1**self.t
+                bias_correction2 = 1 - self.beta2**self.t
+
+                # Efficient Update Formula:
+                # w -= lr * m_hat / (sqrt(v_hat) + epsilon)
+                # w -= (lr / bias_correction1) * m / (sqrt(v / bias_correction2) + epsilon)
+
+                step_size = self.learning_rate / bias_correction1
+
+                # Denominator construction
+                denom = np.sqrt(self.velocities[p_id])
+                # denom /= sqrt(bias_correction2)
+                np.divide(denom, np.sqrt(bias_correction2), out=denom)
+                # denom += epsilon
+                np.add(denom, self.epsilon, out=denom)
+
+                # Final update: w -= step_size * m / denom
+                # param -= step_size * (self.momentums[p_id] / denom)
+                param -= step_size * self.momentums[p_id] / denom
 
                 if self.regularization == "L2":
                     param -= self.learning_rate * self.apply_regularization(param_name, param)

@@ -286,7 +286,8 @@ class BatchNormalization2D(Layer):
         self.x_centered = self.input - mean
         self.x_norm = self.x_centered * self.std_inv
 
-        res: NDArray = self.x_norm * self.gamma + self.beta
+        res: NDArray = self.x_norm * self.gamma
+        res += self.beta
         return res
 
     def backward(self, output_gradient_batch: NDArray) -> NDArray:

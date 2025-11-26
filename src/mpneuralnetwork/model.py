@@ -106,21 +106,31 @@ class Model:
         model_checkpoint: bool = True,
         compute_train_metrics: bool = False,
     ) -> None:
-        X_copy: NDArray = np.array(X_train, dtype=DTYPE, copy=True)
-        y_copy: NDArray = np.array(y_train, dtype=DTYPE, copy=True)
+        X_t = X_train.astype(DTYPE, copy=False)
+        y_t = y_train.astype(DTYPE, copy=False)
 
-        permutation: NDArray
-        if evaluation is None and auto_evaluation != 0:
-            split_i = int(len(X_train) * auto_evaluation)
+        X_val: NDArray | None = None
+        y_val: NDArray | None = None
 
-            permutation = np.random.permutation(X_copy.shape[0])
-            X_copy = X_copy[permutation]
-            y_copy = y_copy[permutation]
+        if evaluation is not None:
+            X_val = evaluation[0].astype(DTYPE, copy=False)
+            y_val = evaluation[1].astype(DTYPE, copy=False)
 
-            X_copy, y_copy = X_train[:-split_i], y_train[:-split_i]
-            evaluation = (X_train[-split_i:], y_train[-split_i:])
+        elif auto_evaluation > 0.0:
+            split_i = int(len(X_t) * auto_evaluation)
 
-        num_samples = X_copy.shape[0]
+            all_indices = np.random.permutation(X_t.shape[0])
+
+            train_indices = all_indices[:-split_i]
+            val_indices = all_indices[-split_i:]
+
+            X_val = X_t[val_indices]
+            y_val = y_t[val_indices]
+
+            X_t = X_t[train_indices]
+            y_t = y_t[train_indices]
+
+        num_samples = X_t.shape[0]
         num_batches = int(np.floor(num_samples / batch_size))
 
         early_stopping = early_stopping if early_stopping else epochs + 1
@@ -142,8 +152,8 @@ class Model:
 
             for i in range(num_batches):
                 batch_idx = indices[i * batch_size : (i + 1) * batch_size]
-                X_batch: NDArray = X_copy[batch_idx]
-                y_batch: NDArray = y_copy[batch_idx]
+                X_batch: NDArray = X_t[batch_idx]
+                y_batch: NDArray = y_t[batch_idx]
 
                 predictions, new_metric_dict = self.evaluate(
                     X_batch,
@@ -169,8 +179,8 @@ class Model:
                 metric_dict[key] /= num_batches
                 message += f"   {key} = {metric_dict[key]:.4f}"
 
-            if evaluation is not None:
-                _, val_metric_dict = self.evaluate(evaluation[0], evaluation[1], training=False)
+            if X_val is not None and y_val is not None:
+                _, val_metric_dict = self.evaluate(X_val, y_val, training=False)
 
                 if val_metric_dict["loss"] < best_error:
                     best_error = val_metric_dict["loss"]
@@ -216,7 +226,7 @@ class Model:
         training: bool = False,
         compute_metrics: bool = True,
     ) -> tuple[NDArray, dict[str, float]]:
-        logits: NDArray = np.array(X, dtype=DTYPE, copy=True)
+        logits: NDArray = X.astype(DTYPE, copy=False)
         for layer in self.layers:
             logits = layer.forward(logits, training=training)
 
@@ -252,7 +262,7 @@ class Model:
             print(f"   {key} = {value:.4f}")
 
     def predict(self, input: NDArray) -> NDArray:
-        output: NDArray = np.array(input, dtype=DTYPE, copy=True)
+        output: NDArray = input.astype(DTYPE, copy=False)
         for layer in self.layers:
             output = layer.forward(output, training=False)
 
