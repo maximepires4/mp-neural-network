@@ -1,3 +1,6 @@
+from pathlib import Path
+
+import numpy as np
 from dataset import load_mnist
 
 from mpneuralnetwork.activations import ReLU
@@ -13,9 +16,12 @@ from mpneuralnetwork.layers import (
 from mpneuralnetwork.losses import CategoricalCrossEntropy
 from mpneuralnetwork.model import Model
 from mpneuralnetwork.optimizers import Adam
+from mpneuralnetwork.serialization import save_model
 
 if __name__ == "__main__":
     print("Classification example with convolution: MNIST Dataset")
+
+    np.random.seed(69)
 
     (X_train, y_train), (X_val, y_val), (X_test, y_test) = load_mnist()
 
@@ -53,4 +59,7 @@ if __name__ == "__main__":
     print("\nEvaluating on Test Set:")
     model.test(X_test, y_test)
 
-    print("Done.")
+    Path("output/").mkdir(parents=True, exist_ok=True)
+
+    save_model(model, "output/super_cnn_mnist.npz")
+    print("Model saved to output/mnist_model.npz")
