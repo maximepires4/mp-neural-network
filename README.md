@@ -1,14 +1,14 @@
 <p align="center">
-  <img src="images/logo.svg" alt="MPNeuralNetwork Logo" width="900"/>
+  <img src="https://raw.githubusercontent.com/maximepires4/mp-neural-network/main/images/logo.svg" alt="MPNeuralNetwork Logo" width="900"/>
 </p>
 
 # **MPNeuralNetwork 🧠**
 
-[![PyPI version](https://badge.fury.io/py/mpneuralnetwork.svg)](https://badge.fury.io/py/mpneuralnetwork)
+[![PyPI version](https://img.shields.io/pypi/v/mpneuralnetwork.svg)](https://pypi.org/project/mpneuralnetwork/)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue?style=flat-square&logo=python&logoColor=white)
 ![Build Status](https://img.shields.io/badge/build-passing-brightgreen?style=flat-square)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-![Status](https://img.shields.io/badge/Status-Beta-orange?style=flat-square)
+![Status](https://img.shields.io/badge/Status-Stable-brightgreen?style=flat-square)
 
 **A fully vectorized Deep Learning framework built from scratch using only NumPy.**
 
@@ -201,20 +201,21 @@ This design means that by simply setting `optimizer=Adam(regularization='L2')`, 
 
 Optimization is at the core of this project. Recent benchmarks (v1.0.0b) show significant improvements compared to the initial implementation:
 
-*   **🚀 Speed (~26% faster):**
-    *   **Vectorization:** Replacing scalar loops with `im2col` for convolutions.
-    *   **In-Place Operations:** Using `out=...` in NumPy to avoid temporary array allocations in Optimizers and Layers.
-    *   **Smart Shuffling:** Shuffling indices instead of copying the entire dataset at every epoch.
+* **Speed (~26% faster):**
+  * **Vectorization:** Replacing scalar loops with `im2col` for convolutions.
+  * **In-Place Operations:** Using `out=...` in NumPy to avoid temporary array allocations in Optimizers and Layers.
+  * **Smart Shuffling:** Shuffling indices instead of copying the entire dataset at every epoch.
 
-*   **💾 Memory (~50% reduction):**
-    *   **Float32 Precision:** Enforced globally via `DTYPE` to halve the memory footprint of weights and gradients (vs default float64).
-    *   **Zero-Copy Views:** The training loop uses array views for validation splits and batching, eliminating redundant data duplication.
+* **Memory (~50% reduction):**
+  * **Float32 Precision:** Enforced globally via `DTYPE` to halve the memory footprint of weights and gradients (vs default float64).
+  * **Zero-Copy Views:** The training loop uses array views for validation splits and batching, eliminating redundant data duplication.
 
 ## **Benchmarking & Profiling**
 
 To verify performance improvements (like `im2col` or `float32` optimization), the project includes a comprehensive benchmarking suite located in `benchmark/`.
 
 ### **Running Benchmarks**
+
 A utility script automates the execution of all benchmarks, profiling both **CPU Time** (via `cProfile`) and **Memory Usage** (via `memray`).
 
 ```bash
@@ -223,6 +224,7 @@ python benchmark/run_benchmarks.py
 ```
 
 ### **Comparing Performance**
+
 You can compare two different runs (e.g., before and after an optimization) to see regression/improvements:
 
 ```bash
