@@ -1,13 +1,10 @@
 from abc import abstractmethod
 from typing import Literal
 
-import numpy as np
-from numpy.typing import NDArray
-
-from . import DTYPE
+from . import DTYPE, ArrayType, xp
 from .layers import Layer
 
-T = dict[int, NDArray]
+T = dict[int, ArrayType]
 Lit_R = Literal["L1", "L2"]
 
 
@@ -29,15 +26,15 @@ class Optimizer:
             "weight_decay": self.weight_decay,
         }
 
-    def apply_regularization(self, param_name: str, param: NDArray) -> NDArray | int:
-        regularization: NDArray
+    def apply_regularization(self, param_name: str, param: ArrayType) -> ArrayType | int:
+        regularization: ArrayType
         if "bias" in param_name or "beta" in param_name or "gamma" in param_name:
             return 0
 
         if self.regularization == "L2":
             regularization = self.weight_decay * param
         else:
-            regularization = self.weight_decay * np.sign(param)
+            regularization = self.weight_decay * xp.sign(param)
 
         return regularization
 
@@ -70,12 +67,12 @@ class SGD(Optimizer):
                 p_id: int = id(param)
 
                 if p_id not in self.velocities:
-                    self.velocities[p_id] = np.zeros_like(param, dtype=DTYPE)
+                    self.velocities[p_id] = xp.zeros_like(param, dtype=DTYPE)
 
                 # Velocity Update: v = momentum * v - lr * grad
 
                 # 1. v *= momentum (in-place)
-                np.multiply(self.velocities[p_id], self.momentum, out=self.velocities[p_id])
+                xp.multiply(self.velocities[p_id], self.momentum, out=self.velocities[p_id])
 
                 # 2. v -= lr * grad
                 self.velocities[p_id] -= self.learning_rate * grad
@@ -119,21 +116,21 @@ class RMSprop(Optimizer):
                 p_id: int = id(param)
 
                 if p_id not in self.cache:
-                    self.cache[p_id] = np.zeros_like(param, dtype=DTYPE)
+                    self.cache[p_id] = xp.zeros_like(param, dtype=DTYPE)
 
                 # Cache Update: cache = decay * cache + (1 - decay) * grad^2
 
                 # 1. cache *= decay (in-place)
-                np.multiply(self.cache[p_id], self.decay_rate, out=self.cache[p_id])
+                xp.multiply(self.cache[p_id], self.decay_rate, out=self.cache[p_id])
 
                 # 2. cache += (1 - decay) * grad^2
-                self.cache[p_id] += (1 - self.decay_rate) * np.square(grad)
+                self.cache[p_id] += (1 - self.decay_rate) * xp.square(grad)
 
                 # Parameter Update: w -= lr * grad / (sqrt(cache) + epsilon)
 
                 # 1. Denominator = sqrt(cache) + epsilon
-                denom = np.sqrt(self.cache[p_id])
-                np.add(denom, self.epsilon, out=denom)
+                denom = xp.sqrt(self.cache[p_id])
+                xp.add(denom, self.epsilon, out=denom)
 
                 # 2. Update = lr * grad / denom
                 # w -= update
@@ -182,14 +179,14 @@ class Adam(Optimizer):
                 p_id: int = id(param)
 
                 if p_id not in self.momentums:
-                    self.momentums[p_id] = np.zeros_like(param, dtype=DTYPE)
-                    self.velocities[p_id] = np.zeros_like(param, dtype=DTYPE)
+                    self.momentums[p_id] = xp.zeros_like(param, dtype=DTYPE)
+                    self.velocities[p_id] = xp.zeros_like(param, dtype=DTYPE)
 
                 # --- 1. Update Momentum (First Moment) ---
                 # m = beta1 * m + (1 - beta1) * grad
 
                 # m *= beta1
-                np.multiply(self.momentums[p_id], self.beta1, out=self.momentums[p_id])
+                xp.multiply(self.momentums[p_id], self.beta1, out=self.momentums[p_id])
                 # m += (1 - beta1) * grad
                 self.momentums[p_id] += (1 - self.beta1) * grad
 
@@ -197,9 +194,9 @@ class Adam(Optimizer):
                 # v = beta2 * v + (1 - beta2) * grad^2
 
                 # v *= beta2
-                np.multiply(self.velocities[p_id], self.beta2, out=self.velocities[p_id])
+                xp.multiply(self.velocities[p_id], self.beta2, out=self.velocities[p_id])
                 # v += (1 - beta2) * grad^2
-                self.velocities[p_id] += (1 - self.beta2) * np.square(grad)
+                self.velocities[p_id] += (1 - self.beta2) * xp.square(grad)
 
                 # --- 3. Bias Correction ---
                 # m_hat = m / (1 - beta1^t)
@@ -215,11 +212,11 @@ class Adam(Optimizer):
                 step_size = self.learning_rate / bias_correction1
 
                 # Denominator construction
-                denom = np.sqrt(self.velocities[p_id])
+                denom = xp.sqrt(self.velocities[p_id])
                 # denom /= sqrt(bias_correction2)
-                np.divide(denom, np.sqrt(bias_correction2), out=denom)
+                xp.divide(denom, xp.sqrt(bias_correction2), out=denom)
                 # denom += epsilon
-                np.add(denom, self.epsilon, out=denom)
+                xp.add(denom, self.epsilon, out=denom)
 
                 # Final update: w -= step_size * m / denom
                 # param -= step_size * (self.momentums[p_id] / denom)

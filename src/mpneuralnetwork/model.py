@@ -1,9 +1,9 @@
 import numpy as np
-from numpy.typing import NDArray
 
 from mpneuralnetwork.metrics import RMSE, Accuracy, F1Score, Metric, R2Score
 
-from . import DTYPE
+from . import DTYPE, ArrayType, xp
+from .backend import to_device
 from .activations import Activation, PReLU, ReLU, Sigmoid, Softmax, Swish
 from .layers import BatchNormalization, Convolutional, Dense, Dropout, Layer, Lit_W
 from .losses import MSE, BinaryCrossEntropy, CategoricalCrossEntropy, Loss
@@ -96,30 +96,30 @@ class Model:
 
     def train(
         self,
-        X_train: NDArray,
-        y_train: NDArray,
+        X_train: ArrayType,
+        y_train: ArrayType,
         epochs: int,
         batch_size: int,
-        evaluation: tuple[NDArray, NDArray] | None = None,
+        evaluation: tuple[ArrayType, ArrayType] | None = None,
         auto_evaluation: float = 0.2,
         early_stopping: int | None = None,
         model_checkpoint: bool = True,
         compute_train_metrics: bool = False,
     ) -> None:
-        X_t = X_train.astype(DTYPE, copy=False)
-        y_t = y_train.astype(DTYPE, copy=False)
+        X_t = to_device(X_train.astype(DTYPE, copy=False))
+        y_t = to_device(y_train.astype(DTYPE, copy=False))
 
-        X_val: NDArray | None = None
-        y_val: NDArray | None = None
+        X_val: ArrayType | None = None
+        y_val: ArrayType | None = None
 
         if evaluation is not None:
-            X_val = evaluation[0].astype(DTYPE, copy=False)
-            y_val = evaluation[1].astype(DTYPE, copy=False)
+            X_val = to_device(evaluation[0].astype(DTYPE, copy=False))
+            y_val = to_device(evaluation[1].astype(DTYPE, copy=False))
 
         elif auto_evaluation > 0.0:
             split_i = int(len(X_t) * auto_evaluation)
 
-            all_indices = np.random.permutation(X_t.shape[0])
+            all_indices = xp.random.permutation(X_t.shape[0])
 
             train_indices = all_indices[:-split_i]
             val_indices = all_indices[-split_i:]
@@ -147,13 +147,13 @@ class Model:
                 for metric in self.metrics:
                     metric_dict[metric.__class__.__name__.lower()] = 0
 
-            indices = np.arange(num_samples)
-            np.random.shuffle(indices)
+            indices = xp.arange(num_samples)
+            xp.random.shuffle(indices)
 
             for i in range(num_batches):
                 batch_idx = indices[i * batch_size : (i + 1) * batch_size]
-                X_batch: NDArray = X_t[batch_idx]
-                y_batch: NDArray = y_t[batch_idx]
+                X_batch: ArrayType = X_t[batch_idx]
+                y_batch: ArrayType = y_t[batch_idx]
 
                 predictions, new_metric_dict = self.evaluate(
                     X_batch,
@@ -165,7 +165,7 @@ class Model:
                 for key, value in new_metric_dict.items():
                     metric_dict[key] += value
 
-                grad: NDArray = self.loss.prime(predictions, y_batch)
+                grad: ArrayType = self.loss.prime(predictions, y_batch)
 
                 for layer in reversed(self.layers):
                     grad = layer.backward(grad)
@@ -221,12 +221,12 @@ class Model:
 
     def evaluate(
         self,
-        X: NDArray,
-        y: NDArray,
+        X: ArrayType,
+        y: ArrayType,
         training: bool = False,
         compute_metrics: bool = True,
-    ) -> tuple[NDArray, dict[str, float]]:
-        logits: NDArray = X.astype(DTYPE, copy=False)
+    ) -> tuple[ArrayType, dict[str, float]]:
+        logits: ArrayType = X.astype(DTYPE, copy=False)
         for layer in self.layers:
             logits = layer.forward(logits, training=training)
 
@@ -235,7 +235,7 @@ class Model:
         metric_dict: dict[str, float] = {}
         metric_dict["loss"] = loss
 
-        predictions_activated: NDArray = logits
+        predictions_activated: ArrayType = logits
         if self.output_activation is not None:
             predictions_activated = self.output_activation.forward(logits)
 
@@ -248,21 +248,21 @@ class Model:
                 else:
                     metric_dict[key] = metric(y, predictions_activated)
 
-        predictions: NDArray = logits
+        predictions: ArrayType = logits
         if not training:
             predictions = predictions_activated
 
         return predictions, metric_dict
 
-    def test(self, X_test: NDArray, y_test: NDArray) -> None:
+    def test(self, X_test: ArrayType, y_test: ArrayType) -> None:
         _, metric_dict = self.evaluate(X_test, y_test, training=False)
 
         print("Test resuls:")
         for key, value in metric_dict.items():
             print(f"   {key} = {value:.4f}")
 
-    def predict(self, input: NDArray) -> NDArray:
-        output: NDArray = input.astype(DTYPE, copy=False)
+    def predict(self, input: ArrayType) -> ArrayType:
+        output: ArrayType = input.astype(DTYPE, copy=False)
         for layer in self.layers:
             output = layer.forward(output, training=False)
 
