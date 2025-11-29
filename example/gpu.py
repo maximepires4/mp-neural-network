@@ -1,15 +1,15 @@
+import os
 from pathlib import Path
 
+os.environ["MPNN_BACKEND"] = "cupy"
 import numpy as np
 from dataset import load_mnist
 
 from mpneuralnetwork.activations import ReLU
 from mpneuralnetwork.layers import (
     BatchNormalization,
-    BatchNormalization2D,
     Convolutional,
     Dense,
-    Dropout,
     Flatten,
     MaxPooling2D,
 )
@@ -25,32 +25,29 @@ if __name__ == "__main__":
 
     (X_train, y_train), (X_val, y_val), (X_test, y_test) = load_mnist(conv=True)
 
+    X_train = X_train[:800]
+    y_train = y_train[:800]
+    X_val = X_val[:200]
+    y_val = y_val[:200]
+    X_test = X_test[:100]
+    y_test = y_test[:100]
+
     print(f"Train set: {X_train.shape}")
 
-    # Modern architecture: Conv -> BN -> ReLU -> Pool sequence
     network = [
-        # Block 1: 28x28 -> 14x14
         Convolutional(output_depth=32, kernel_size=3, input_shape=(1, 28, 28)),
-        BatchNormalization2D(),
         ReLU(),
-        MaxPooling2D(pool_size=2, strides=2),
-        # Block 2: 14x14 -> 7x7
-        Convolutional(output_depth=64, kernel_size=3),
-        BatchNormalization2D(),
-        ReLU(),
-        MaxPooling2D(pool_size=2, strides=2),
-        # Block 3: Classifier
+        MaxPooling2D(),
         Flatten(),
         Dense(128),
         BatchNormalization(),
         ReLU(),
-        Dropout(0.5),  # Strong regularization to prevent overfitting
         Dense(10),
     ]
 
     model = Model(layers=network, loss=CategoricalCrossEntropy(), optimizer=Adam(learning_rate=0.001))
 
-    model.train(X_train, y_train, epochs=10, batch_size=64, evaluation=(X_val, y_val), early_stopping=3, model_checkpoint=True)
+    model.train(X_train, y_train, epochs=10, batch_size=64, evaluation=(X_val, y_val), model_checkpoint=False)
 
     print("\nEvaluating on Test Set:")
     model.test(X_test, y_test)

@@ -1,13 +1,17 @@
 import json
 from collections.abc import Callable
 from pathlib import Path
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 from numpy.typing import NDArray
 
-from . import activations, layers, losses, metrics, optimizers
-from .model import Model
+from . import DTYPE, activations, layers, losses, metrics, optimizers, to_device, to_host, xp
+from .layers.layer import Layer
+from .optimizers import Optimizer
+
+if TYPE_CHECKING:
+    from .model import Model
 
 
 class NumpyEncoder(json.JSONEncoder):
@@ -28,7 +32,7 @@ def _get_class(name: str) -> Callable:
     raise ValueError(f"Class {name} not found in mpneuralnetwork submodules.")
 
 
-def save_model(model: Model, filepath: str) -> None:
+def save_model(model: "Model", filepath: str) -> None:
     layers_config: list = []
     for layer in model.layers:
         layers_config.append(layer.get_config())
@@ -49,7 +53,7 @@ def save_model(model: Model, filepath: str) -> None:
         "optimizer_globals": optimizer_globals,
     }
 
-    weights_dict: dict = model.get_weights(optimizer_params)
+    weights_dict: dict = get_model_weights(model.layers, optimizer_params)
 
     if filepath[-4:] != ".npz":
         filepath = f"{filepath}.npz"
@@ -61,7 +65,9 @@ def save_model(model: Model, filepath: str) -> None:
     np.savez_compressed(filepath, **save_data)
 
 
-def load_model(path: str | Path) -> Model:
+def load_model(path: str | Path) -> "Model":
+    from .model import Model
+
     filepath: str = str(path) if isinstance(path, Path) else path
 
     if filepath[-4:] != ".npz":
@@ -101,6 +107,71 @@ def load_model(path: str | Path) -> Model:
             setattr(optimizer, param_name, param)
 
     model = Model(model_layers, loss, optimizer)
-    model.restore_weights(data, optimizer)
+    restore_model_weights(model.layers, data, optimizer)
 
     return model
+
+
+def get_model_weights(layers: list[Layer], optimizer_params: dict | None = None) -> dict:
+    weights_dict: dict = {}
+    for i, layer in enumerate(layers):
+        if hasattr(layer, "params"):
+            for l_param_name, (l_param, _) in layer.params.items():
+                p_id: int = id(l_param)
+                logical_name: str = f"layer_{i}_{l_param_name}"
+
+                weights_dict[logical_name] = np.array(to_host(l_param), dtype=DTYPE, copy=True)
+
+                if not optimizer_params:
+                    continue
+
+                for o_param_name, o_param in optimizer_params.items():
+                    if not isinstance(o_param, dict):
+                        continue
+                    if p_id in o_param:
+                        weights_dict[f"optimizer_{o_param_name}_{logical_name}"] = np.array(to_host(o_param[p_id]), dtype=DTYPE, copy=True)
+
+        if hasattr(layer, "state"):
+            for l_state_name, l_state_val in layer.state.items():
+                logical_name = f"layer_{i}_state_{l_state_name}"
+                weights_dict[logical_name] = np.array(to_host(l_state_val), dtype=DTYPE, copy=True)
+
+    return weights_dict
+
+
+def restore_model_weights(layers: list[Layer], weights_dict: dict, optimizer: Optimizer | None = None) -> None:
+    for i, layer in enumerate(layers):
+        if hasattr(layer, "params"):
+            current_params = {}
+            for l_param_name in layer.params:
+                logical_name = f"layer_{i}_{l_param_name}"
+                if logical_name in weights_dict:
+                    current_params[l_param_name] = to_device(weights_dict[logical_name])
+
+            if hasattr(layer, "load_params") and current_params:
+                layer.load_params(current_params)
+
+            if optimizer:
+                for l_param_name, (l_param, _) in layer.params.items():
+                    l_param = to_device(l_param)
+                    p_id = id(l_param)
+                    logical_name = f"layer_{i}_{l_param_name}"
+
+                    for o_param_name, o_param in optimizer.params.items():
+                        if not isinstance(o_param, dict):
+                            continue
+                        key = f"optimizer_{o_param_name}_{logical_name}"
+                        if key in weights_dict:
+                            if p_id not in o_param:
+                                o_param[p_id] = xp.zeros_like(l_param, dtype=DTYPE)
+                            xp.copyto(o_param[p_id], to_device(weights_dict[key]))  # TODO: ?
+
+        if hasattr(layer, "state"):
+            current_state = {}
+            for l_state_name in layer.state:
+                logical_name = f"layer_{i}_state_{l_state_name}"
+                if logical_name in weights_dict:
+                    current_state[l_state_name] = to_device(weights_dict[logical_name])
+
+            if current_state:
+                layer.state = current_state

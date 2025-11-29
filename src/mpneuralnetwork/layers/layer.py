@@ -2,7 +2,8 @@ from abc import abstractmethod
 from typing import Literal
 
 import numpy as np
-from numpy.typing import NDArray
+
+from .. import ArrayType
 
 Lit_W = Literal["auto", "he", "xavier"]
 
@@ -21,8 +22,8 @@ class Layer:
                 input_shape = (input_shape,)
             self.input_shape = input_shape
 
-        self.input: NDArray
-        self.output: NDArray
+        self.input: ArrayType
+        self.output: ArrayType
 
     def get_config(self) -> dict:
         return {"type": self.__class__.__name__}
@@ -37,26 +38,26 @@ class Layer:
             self.output_shape = input_shape
 
     @abstractmethod
-    def forward(self, input_batch: NDArray, training: bool = True) -> NDArray:
+    def forward(self, input_batch: ArrayType, training: bool = True) -> ArrayType:
         pass
 
     @abstractmethod
-    def backward(self, output_gradient_batch: NDArray) -> NDArray:
+    def backward(self, output_gradient_batch: ArrayType) -> ArrayType:
         pass
 
     @property
-    def params(self) -> dict[str, tuple[NDArray, NDArray]]:
+    def params(self) -> dict[str, tuple[ArrayType, ArrayType]]:
         return {}
 
-    def load_params(self, params: dict[str, NDArray]) -> None:
+    def load_params(self, params: dict[str, ArrayType]) -> None:
         pass
 
     @property
-    def state(self) -> dict[str, NDArray]:
+    def state(self) -> dict[str, ArrayType]:
         return {}
 
     @state.setter
-    def state(self, state: dict[str, NDArray]) -> None:
+    def state(self, state: dict[str, ArrayType]) -> None:
         pass
 
     @property

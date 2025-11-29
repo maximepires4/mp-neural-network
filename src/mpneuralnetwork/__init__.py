@@ -1,3 +1,3 @@
-import numpy as np
+from .backend import DTYPE, ArrayType, to_device, to_host, xp
 
-DTYPE = np.float32
+__all__ = ["ArrayType", "xp", "DTYPE", "to_device", "to_host"]

@@ -1,12 +1,9 @@
 from collections.abc import Callable
 
-import numpy as np
-from numpy.typing import NDArray
-
-from . import DTYPE
+from . import DTYPE, ArrayType, xp
 from .layers import Layer
 
-T = Callable[[NDArray], NDArray]
+T = Callable[[ArrayType], ArrayType]
 
 
 class Activation(Layer):
@@ -14,45 +11,45 @@ class Activation(Layer):
         self.activation: T = activation
         self.activation_prime: T = activation_prime
 
-    def forward(self, input_batch: NDArray, training: bool = True) -> NDArray:
+    def forward(self, input_batch: ArrayType, training: bool = True) -> ArrayType:
         self.input = input_batch
         return self.activation(self.input)
 
-    def backward(self, output_gradient_batch: NDArray) -> NDArray:
-        res: NDArray = np.multiply(output_gradient_batch, self.activation_prime(self.input))
+    def backward(self, output_gradient_batch: ArrayType) -> ArrayType:
+        res: ArrayType = xp.multiply(output_gradient_batch, self.activation_prime(self.input))
         return res
 
     @property
-    def params(self) -> dict[str, tuple[NDArray, NDArray]]:
+    def params(self) -> dict[str, tuple[ArrayType, ArrayType]]:
         return {}
 
 
 class Tanh(Activation):
     def __init__(self) -> None:
         super().__init__(
-            lambda x: np.tanh(x, dtype=DTYPE),
-            lambda x: (1 - np.tanh(x, dtype=DTYPE) ** 2),
+            lambda x: xp.tanh(x, dtype=DTYPE),
+            lambda x: (1 - xp.tanh(x, dtype=DTYPE) ** 2),
         )
 
 
 class Sigmoid(Activation):
     def __init__(self) -> None:
-        def sigmoid(x: NDArray) -> NDArray:
-            return 1 / (1 + np.exp(-x, dtype=DTYPE))  # type: ignore[no-any-return]
+        def sigmoid(x: ArrayType) -> ArrayType:
+            return 1 / (1 + xp.exp(-x, dtype=DTYPE))  # type: ignore[no-any-return]
 
         super().__init__(lambda x: sigmoid(x), lambda x: sigmoid(x) * (1 - sigmoid(x)))
 
 
 class ReLU(Activation):
     def __init__(self) -> None:
-        super().__init__(lambda x: np.maximum(0, x, dtype=DTYPE), lambda x: x > 0)
+        super().__init__(lambda x: xp.maximum(0, x, dtype=DTYPE), lambda x: x > 0)
 
 
 class PReLU(Activation):
     def __init__(self, alpha: float = 0.01) -> None:
         super().__init__(
-            lambda x: np.maximum(alpha * x, x, dtype=DTYPE),
-            lambda x: np.where(x < 0, alpha, 1),
+            lambda x: xp.maximum(alpha * x, x, dtype=DTYPE),
+            lambda x: xp.where(x < 0, alpha, 1),
         )
         self.alpha: float = alpha
 
@@ -65,24 +62,24 @@ class PReLU(Activation):
 class Swish(Activation):
     def __init__(self) -> None:
         super().__init__(
-            lambda x: x / (1 + np.exp(-x, dtype=DTYPE)),
-            lambda x: (1 + np.exp(-x, dtype=DTYPE) + x * np.exp(-x, dtype=DTYPE)) / (1 + np.exp(-x, dtype=DTYPE)) ** 2,
+            lambda x: x / (1 + xp.exp(-x, dtype=DTYPE)),
+            lambda x: (1 + xp.exp(-x, dtype=DTYPE) + x * xp.exp(-x, dtype=DTYPE)) / (1 + xp.exp(-x, dtype=DTYPE)) ** 2,
         )
 
 
 class Softmax(Layer):
-    def forward(self, input_batch: NDArray, training: bool = True) -> NDArray:
-        m = np.max(input_batch, axis=1, keepdims=True)
-        e = np.exp(input_batch - m, dtype=DTYPE)
-        self.output = e / np.sum(e, axis=1, keepdims=True, dtype=DTYPE)
+    def forward(self, input_batch: ArrayType, training: bool = True) -> ArrayType:
+        m = xp.max(input_batch, axis=1, keepdims=True)
+        e = xp.exp(input_batch - m, dtype=DTYPE)
+        self.output = e / xp.sum(e, axis=1, keepdims=True, dtype=DTYPE)
         return self.output
 
-    def backward(self, output_gradient_batch: NDArray) -> NDArray:
-        sum_s_times_g: NDArray = np.sum(self.output * output_gradient_batch, axis=1, keepdims=True, dtype=DTYPE)  # type: ignore[assignment]
+    def backward(self, output_gradient_batch: ArrayType) -> ArrayType:
+        sum_s_times_g: ArrayType = xp.sum(self.output * output_gradient_batch, axis=1, keepdims=True, dtype=DTYPE)  # type: ignore[assignment]
 
-        res: NDArray = self.output * (output_gradient_batch - sum_s_times_g)
+        res: ArrayType = self.output * (output_gradient_batch - sum_s_times_g)
         return res
 
     @property
-    def params(self) -> dict[str, tuple[NDArray, NDArray]]:
+    def params(self) -> dict[str, tuple[ArrayType, ArrayType]]:
         return {}
