@@ -28,7 +28,7 @@ class Activation(Layer):
 
 
 class Tanh(Activation):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(
             lambda x: np.tanh(x, dtype=DTYPE),
             lambda x: (1 - np.tanh(x, dtype=DTYPE) ** 2),
@@ -36,20 +36,20 @@ class Tanh(Activation):
 
 
 class Sigmoid(Activation):
-    def __init__(self):
-        def sigmoid(x):
-            return 1 / (1 + np.exp(-x, dtype=DTYPE))
+    def __init__(self) -> None:
+        def sigmoid(x: NDArray) -> NDArray:
+            return 1 / (1 + np.exp(-x, dtype=DTYPE))  # type: ignore[no-any-return]
 
         super().__init__(lambda x: sigmoid(x), lambda x: sigmoid(x) * (1 - sigmoid(x)))
 
 
 class ReLU(Activation):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(lambda x: np.maximum(0, x, dtype=DTYPE), lambda x: x > 0)
 
 
 class PReLU(Activation):
-    def __init__(self, alpha: float = 0.01):
+    def __init__(self, alpha: float = 0.01) -> None:
         super().__init__(
             lambda x: np.maximum(alpha * x, x, dtype=DTYPE),
             lambda x: np.where(x < 0, alpha, 1),
@@ -63,7 +63,7 @@ class PReLU(Activation):
 
 
 class Swish(Activation):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(
             lambda x: x / (1 + np.exp(-x, dtype=DTYPE)),
             lambda x: (1 + np.exp(-x, dtype=DTYPE) + x * np.exp(-x, dtype=DTYPE)) / (1 + np.exp(-x, dtype=DTYPE)) ** 2,
@@ -71,9 +71,6 @@ class Swish(Activation):
 
 
 class Softmax(Layer):
-    def __init__(self):
-        pass
-
     def forward(self, input_batch: NDArray, training: bool = True) -> NDArray:
         m = np.max(input_batch, axis=1, keepdims=True)
         e = np.exp(input_batch - m, dtype=DTYPE)
