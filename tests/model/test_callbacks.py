@@ -8,6 +8,7 @@ from mpneuralnetwork.layers import Dense
 from mpneuralnetwork.losses import MSE
 from mpneuralnetwork.model import Model
 from mpneuralnetwork.optimizers import SGD, Adam
+from mpneuralnetwork.serialization import get_model_weights, restore_model_weights
 
 
 def test_early_stopping_triggers():
@@ -40,10 +41,10 @@ def test_model_checkpoint_restores_best_weights():
     np.random.seed(42)
     model = Model([Dense(1, input_size=1), ReLU(), Dense(1)], MSE(), Adam(learning_rate=0.1))
     model.layers[0].weights[:] = 1.0
-    best_weights_memory = model.get_weights()
+    best_weights_memory = get_model_weights(model.layers)
 
     model.layers[0].weights[:] = -100.0
-    model.restore_weights(best_weights_memory)
+    restore_model_weights(model.layers, best_weights_memory)
 
     assert np.allclose(model.layers[0].weights, 1.0)
 

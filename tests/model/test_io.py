@@ -1,11 +1,12 @@
 import numpy as np
+import pytest
 
 from mpneuralnetwork.activations import ReLU
 from mpneuralnetwork.layers import Convolutional, Dense, Flatten
 from mpneuralnetwork.losses import MSE
 from mpneuralnetwork.model import Model
 from mpneuralnetwork.optimizers import Adam
-from mpneuralnetwork.serialization import load_model, save_model
+from mpneuralnetwork.serialization import get_model_weights, load_model, save_model
 
 
 def test_model_save_and_load(tmp_path):
@@ -15,35 +16,39 @@ def test_model_save_and_load(tmp_path):
     optimizer = Adam(learning_rate=0.01)
     model = Model(layers, loss, optimizer)
 
-    X = np.random.randn(10, 2)
-    y = np.random.randn(10, 1)
+    X = np.random.randn(10, 2).astype(np.float32)
+    y = np.random.randn(10, 1).astype(np.float32)
 
     model.train(X, y, epochs=5, batch_size=2)
 
-    original_weights = [layer.weights.copy() for layer in model.layers if hasattr(layer, "weights")]
-    original_biases = [layer.biases.copy() for layer in model.layers if hasattr(layer, "biases")]
+    # Capture state using the correct API (returns host numpy arrays)
+    original_state = get_model_weights(model.layers, model.optimizer.params)
     original_t = model.optimizer.t
-    original_momentums = {k: v.copy() for k, v in model.optimizer.momentums.items()}
 
     save_path = tmp_path / "test_model.npz"
     save_model(model, str(save_path))
 
     loaded_model = load_model(str(save_path))
 
-    loaded_weights = [layer.weights for layer in loaded_model.layers if hasattr(layer, "weights")]
-    loaded_biases = [layer.biases for layer in loaded_model.layers if hasattr(layer, "biases")]
+    # Capture loaded state
+    loaded_state = get_model_weights(loaded_model.layers, loaded_model.optimizer.params)
 
-    for w_orig, w_load in zip(original_weights, loaded_weights, strict=True):
-        assert np.allclose(w_orig, w_load)
+    # 1. Verify Weights and Optimizer State
+    for key in original_state:
+        assert key in loaded_state
+        assert np.allclose(original_state[key], loaded_state[key]), f"Mismatch in {key}"
 
-    for b_orig, b_load in zip(original_biases, loaded_biases, strict=True):
-        assert np.allclose(b_orig, b_load)
-
+    # 2. Verify Optimizer Attributes
     assert isinstance(loaded_model.optimizer, Adam)
     assert loaded_model.optimizer.t == original_t
-    assert len(loaded_model.optimizer.momentums) == len(original_momentums)
 
-    loaded_model.train(X, y, epochs=1, batch_size=2)
+    # 3. Verify Functional Continuity
+    # Run a training step to ensure everything is connected (grads, optimizer references)
+    try:
+        loaded_model.train(X, y, epochs=1, batch_size=2)
+    except Exception as e:
+        pytest.fail(f"Training failed after loading: {e}")
+
     final_loss_loaded = loaded_model.loss.direct(loaded_model.predict(X), y)
     assert not np.isnan(final_loss_loaded)
 
@@ -53,37 +58,39 @@ def test_conv_model_save_load_resume(tmp_path):
     Test d'intégration: Conv -> Save -> Load -> Resume Training.
     """
     input_shape = (1, 10, 10)
-    X = np.random.randn(10, *input_shape)
-    y = np.random.randn(10, 1)  # Regression target
+    X = np.random.randn(10, *input_shape).astype(np.float32)
+    y = np.random.randn(10, 1).astype(np.float32)  # Regression target
 
-    # Conv (output 8x8) -> Flatten (64) -> Dense (1)
+    # Conv (output 2x8x8) -> Flatten (128) -> Dense (1)
     network = [Convolutional(output_depth=2, kernel_size=3, input_shape=input_shape, initialization="he"), Flatten(), Dense(1)]
 
     model = Model(network, MSE(), Adam(learning_rate=0.01))
 
-    # 2. Train briefly
+    # 1. Train briefly
     model.train(X, y, epochs=2, batch_size=2)
 
-    original_weights = model.get_weights()
+    original_weights = get_model_weights(model.layers)
 
-    # 3. Save
+    # 2. Save
     save_path = tmp_path / "conv_test_model.npz"
     save_model(model, str(save_path))
 
-    # 4. Load
+    # 3. Load
     loaded_model = load_model(str(save_path))
-    loaded_weights = loaded_model.get_weights()
+    loaded_weights = get_model_weights(loaded_model.layers)
 
-    # 5. Verify Weights
+    # 4. Verify Weights
     for key in original_weights:
         assert np.allclose(original_weights[key], loaded_weights[key]), f"Mismatch in {key}"
 
-    # 6. Resume Training
-    initial_loaded_weights = loaded_model.get_weights()["layer_2_weights"].copy()  # Dense weights
+    # 5. Resume Training
+    # We pick a specific weight to watch
+    # Note: get_model_weights returns copies, so we can use it to compare 'before' vs 'after'
+    initial_loaded_weights = loaded_weights["layer_2_weights"]
 
     loaded_model.train(X, y, epochs=1, batch_size=2)
 
-    new_loaded_weights = loaded_model.get_weights()["layer_2_weights"]
+    new_loaded_weights = get_model_weights(loaded_model.layers)["layer_2_weights"]
 
     # Weights should have moved
     assert not np.allclose(initial_loaded_weights, new_loaded_weights)
