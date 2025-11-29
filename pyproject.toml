@@ -104,7 +104,7 @@ ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 minversion = "7.0"
-addopts = "-ra -q --cov=mpneuralnetwork --cov-report=term-missing"
+addopts = "-ra --cov=mpneuralnetwork --cov-report=term-missing"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 
