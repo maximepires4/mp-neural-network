@@ -19,4 +19,4 @@ repos:
     hooks:
       - id: mypy
         additional_dependencies: [numpy, types-setuptools]
-        exclude: ^tests/
+        exclude: ^(tests|example|benchmark)/

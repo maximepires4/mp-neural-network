@@ -4,20 +4,21 @@ from pathlib import Path
 from typing import cast
 
 import numpy as np
+from numpy.typing import NDArray
 
 from . import activations, layers, losses, metrics, optimizers
 from .model import Model
 
 
 class NumpyEncoder(json.JSONEncoder):
-    def default(self, obj):
+    def default(self, obj: int | float | NDArray) -> int | float | list:
         if isinstance(obj, np.integer):
             return int(obj)
         if isinstance(obj, np.floating):
             return float(obj)
         if isinstance(obj, np.ndarray):
-            return obj.tolist()
-        return super().default(obj)
+            return obj.tolist()  # type: ignore[no-any-return]
+        return super().default(obj)  # type: ignore[no-any-return]
 
 
 def _get_class(name: str) -> Callable:

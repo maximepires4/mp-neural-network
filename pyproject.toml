@@ -93,8 +93,8 @@ combine-as-imports = true
 
 [tool.mypy]
 python_version = "3.10"
-files = ["src/mpneuralnetwork", "example", "benchmark"]
-exclude = ["tests"]
+files = ["src/mpneuralnetwork"]
+exclude = "(tests|example|benchmark)/"
 warn_return_any = true
 warn_unused_configs = true
 explicit_package_bases = true

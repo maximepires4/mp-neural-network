@@ -29,7 +29,7 @@ class Optimizer:
             "weight_decay": self.weight_decay,
         }
 
-    def apply_regularization(self, param_name, param) -> NDArray | int:
+    def apply_regularization(self, param_name: str, param: NDArray) -> NDArray | int:
         regularization: NDArray
         if "bias" in param_name or "beta" in param_name or "gamma" in param_name:
             return 0
