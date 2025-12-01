@@ -4,31 +4,78 @@ from mpneuralnetwork import DTYPE, ArrayType, xp
 
 
 class Metric:
+    """Base class for evaluation metrics.
+
+    Metrics are used to judge the performance of the model. Unlike Loss functions,
+    metrics are not used during backpropagation (optimization), only for reporting.
+    """
+
     def get_config(self) -> dict:
+        """Returns the metric configuration."""
         return {"type": self.__class__.__name__}
 
     @abstractmethod
     def __call__(self, y_true: ArrayType, y_pred: ArrayType) -> float:
+        """Computes the metric value.
+
+        Args:
+            y_true (ArrayType): Ground truth values.
+            y_pred (ArrayType): Model predictions (probabilities or values).
+
+        Returns:
+            float: The metric score.
+        """
         pass
 
 
 class RMSE(Metric):
+    """Root Mean Squared Error.
+
+    Formula:
+        `RMSE = sqrt( (1/N) * sum((y_pred - y_true)^2) )`
+
+    Used primarily for regression tasks. Lower is better.
+    """
+
     def __call__(self, y_true: ArrayType, y_pred: ArrayType) -> float:
         mse = xp.mean(xp.sum(xp.square(y_true - y_pred), axis=1, dtype=DTYPE), dtype=DTYPE)
         return self.from_mse(float(mse))
 
     def from_mse(self, mse: float) -> float:
+        """Helper to compute RMSE from an existing MSE value."""
         res: float = xp.sqrt(mse, dtype=DTYPE)
         return res
 
 
 class MAE(Metric):
+    """Mean Absolute Error.
+
+    Formula:
+        `MAE = (1/N) * sum( |y_pred - y_true| )`
+
+    Used for regression. Less sensitive to outliers than RMSE. Lower is better.
+    """
+
     def __call__(self, y_true: ArrayType, y_pred: ArrayType) -> float:
         res: float = xp.mean(xp.sum(xp.abs(y_true - y_pred), axis=1, dtype=DTYPE), dtype=DTYPE)
         return res
 
 
 class R2Score(Metric):
+    """R^2 Score (Coefficient of Determination).
+
+    Measures how well the regression predictions approximate the real data points.
+
+    Formula:
+        `R2 = 1 - (SS_res / SS_tot)`
+        `SS_res = sum((y_true - y_pred)^2)`
+        `SS_tot = sum((y_true - mean(y_true))^2)`
+
+    Range: (-inf, 1.0].
+    1.0 is perfect prediction. 0.0 is equivalent to a constant model predicting the mean.
+    Negative values indicate the model is worse than just predicting the mean.
+    """
+
     def __init__(self, epsilon: float = 1e-8) -> None:
         self.epsilon: float = epsilon
 
@@ -46,6 +93,16 @@ class R2Score(Metric):
 
 
 class Accuracy(Metric):
+    """Classification Accuracy.
+
+    Formula:
+        `Accuracy = (TP + TN) / Total Samples`
+
+    Works for:
+    - Binary classification (threshold at 0.5).
+    - Multi-class classification (argmax).
+    """
+
     def __call__(self, y_true: ArrayType, y_pred: ArrayType) -> float:
         if y_true.ndim == 2 and y_true.shape[1] > 1:
             y_true = xp.argmax(y_true, axis=1)
@@ -58,6 +115,14 @@ class Accuracy(Metric):
 
 
 class Precision(Metric):
+    """Precision Metric (Positive Predictive Value).
+
+    Formula:
+        `Precision = TP / (TP + FP)`
+
+    Measures the proportion of positive identifications that were actually correct.
+    """
+
     def __init__(self, epsilon: float = 1e-8) -> None:
         self.epsilon: float = epsilon
 
@@ -92,6 +157,14 @@ class Precision(Metric):
 
 
 class Recall(Metric):
+    """Recall Metric (Sensitivity / True Positive Rate).
+
+    Formula:
+        `Recall = TP / (TP + FN)`
+
+    Measures the proportion of actual positives that were identified correctly.
+    """
+
     def __init__(self, epsilon: float = 1e-8) -> None:
         self.epsilon: float = epsilon
 
@@ -125,6 +198,14 @@ class Recall(Metric):
 
 
 class F1Score(Metric):
+    """F1 Score.
+
+    Formula:
+        `F1 = 2 * (Precision * Recall) / (Precision + Recall)`
+
+    Harmonic mean of Precision and Recall. Useful for imbalanced datasets.
+    """
+
     def __init__(self, epsilon: float = 1e-8) -> None:
         self.epsilon: float = epsilon
 
@@ -148,6 +229,15 @@ class F1Score(Metric):
 
 
 class TopKAccuracy(Metric):
+    """Top-K Accuracy.
+
+    Consider the prediction correct if the true label is among the top K probabilities.
+    Commonly used in ImageNet classification (Top-5).
+
+    Args:
+        k (int): Number of top predictions to consider.
+    """
+
     def __init__(self, k: int) -> None:
         self.k: int = k
 

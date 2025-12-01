@@ -4,6 +4,21 @@ from .utils import col2im, im2col
 
 
 class Convolutional(Layer):
+    """2D Convolutional Layer.
+
+    Applies a 2D convolution over an input signal composed of several input planes.
+    Uses the `im2col` optimization to convert convolution into matrix multiplication,
+    allowing for efficient vectorization.
+
+    Attributes:
+        output_depth (int): Number of output channels (filters).
+        kernel_size (int): Size of the square convolution kernel.
+        initialization (Lit_W): Weight initialization strategy.
+        no_bias (bool): Whether to disable bias.
+        kernels (ArrayType): Learnable filters (output_depth, input_depth, k, k).
+        biases (ArrayType): Learnable biases (output_depth,).
+    """
+
     def __init__(
         self,
         output_depth: int,
@@ -12,6 +27,15 @@ class Convolutional(Layer):
         initialization: Lit_W = "auto",
         no_bias: bool = False,
     ) -> None:
+        """Initializes the Convolutional layer.
+
+        Args:
+            output_depth (int): Number of filters.
+            kernel_size (int): Height/Width of the filter (assumed square).
+            input_shape (tuple | None, optional): Shape of input (depth, height, width).
+            initialization (Lit_W, optional): Weight init method ("auto", "he", "xavier").
+            no_bias (bool, optional): Disable bias. Defaults to False.
+        """
         super().__init__()
         self.output_depth: int = output_depth
         self.kernel_size: int = kernel_size
@@ -54,6 +78,7 @@ class Convolutional(Layer):
             self.init_weights(self.initialization, self.no_bias)
 
     def init_weights(self, method: Lit_W, no_bias: bool) -> None:
+        """Initializes kernels and biases."""
         std_dev = 0.1
 
         input_depth, _, _ = self.input_shape
@@ -80,6 +105,15 @@ class Convolutional(Layer):
             self.biases_gradient = xp.zeros_like(self.biases, dtype=DTYPE)
 
     def forward(self, input_batch: ArrayType, training: bool = True) -> ArrayType:
+        """Performs 2D Convolution.
+
+        Args:
+            input_batch (ArrayType): Input data (N, C_in, H, W).
+            training (bool, optional): Unused. Defaults to True.
+
+        Returns:
+            ArrayType: Feature maps (N, C_out, H_out, W_out).
+        """
         self.input = input_batch
         batch_size = input_batch.shape[0]
 
@@ -96,6 +130,16 @@ class Convolutional(Layer):
         return output.transpose(0, 3, 1, 2)  # type: ignore[no-any-return]
 
     def backward(self, output_gradient_batch: ArrayType) -> ArrayType:
+        """Backpropagates gradients through convolution.
+
+        Uses `col2im` to reconstruct the gradient for the input image.
+
+        Args:
+            output_gradient_batch (ArrayType): Gradient w.r.t output.
+
+        Returns:
+            ArrayType: Gradient w.r.t input.
+        """
         dOut_col = output_gradient_batch.transpose(0, 2, 3, 1).reshape(-1, self.output_depth)
 
         if not self.no_bias:
@@ -132,6 +176,15 @@ class Convolutional(Layer):
 
 
 class Flatten(Layer):
+    """Flatten Layer.
+
+    Flattens the input tensor into a 1D tensor (vector) per sample.
+    Crucial for connecting Convolutional/Pooling layers to Dense layers.
+
+    Input: (Batch, Channel, Height, Width)
+    Output: (Batch, Channel * Height * Width)
+    """
+
     def forward(self, input_batch: ArrayType, training: bool = True) -> ArrayType:
         return input_batch.reshape(input_batch.shape[0], -1)
 
@@ -140,6 +193,16 @@ class Flatten(Layer):
 
 
 class MaxPooling2D(Layer):
+    """Max Pooling 2D Layer.
+
+    Downsamples the input by taking the maximum value over a window.
+    Reduces spatial dimensions and computation, while providing translational invariance.
+
+    Attributes:
+        pool_size (int): Size of the pooling window.
+        stride (int): Stride of the pooling operation.
+    """
+
     def __init__(self, pool_size: int = 2, strides: int | None = None):
         super().__init__()
         self.pool_size: int = pool_size
@@ -186,6 +249,15 @@ class MaxPooling2D(Layer):
 
 
 class AveragePooling2D(Layer):
+    """Average Pooling 2D Layer.
+
+    Downsamples the input by taking the average value over a window.
+
+    Attributes:
+        pool_size (int): Size of the pooling window.
+        stride (int): Stride of the pooling operation.
+    """
+
     def __init__(self, pool_size: int = 2, strides: int | None = None):
         super().__init__()
         self.pool_size: int = pool_size
@@ -229,6 +301,17 @@ class AveragePooling2D(Layer):
 
 
 class BatchNormalization2D(Layer):
+    """Batch Normalization Layer (2D) for Convolutional Networks.
+
+    Normalize the activations of the previous layer at each batch.
+    Operates on the channel dimension (axis 1), so statistics are computed
+    over (Batch, Height, Width).
+
+    Attributes:
+        momentum (float): Momentum for the moving average.
+        epsilon (float): Small float added to variance to avoid dividing by zero.
+    """
+
     def __init__(self, momentum: float = 0.9, epsilon: float = 1e-8) -> None:
         super().__init__()
         self.momentum: float = momentum
@@ -263,6 +346,15 @@ class BatchNormalization2D(Layer):
         return config
 
     def forward(self, input_batch: ArrayType, training: bool = True) -> ArrayType:
+        """Performs spatial batch normalization.
+
+        Args:
+            input_batch (ArrayType): Input (N, C, H, W).
+            training (bool, optional): If True, updates running stats.
+
+        Returns:
+            ArrayType: Normalized input.
+        """
         self.input = input_batch
 
         mean: ArrayType

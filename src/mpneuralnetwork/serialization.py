@@ -15,6 +15,12 @@ if TYPE_CHECKING:
 
 
 class NumpyEncoder(json.JSONEncoder):
+    """JSON encoder for NumPy types.
+
+    Converts NumPy integers, floats, and arrays into native Python types
+    compatible with JSON serialization.
+    """
+
     def default(self, obj: int | float | NDArray) -> int | float | list:
         if isinstance(obj, np.integer):
             return int(obj)
@@ -26,6 +32,7 @@ class NumpyEncoder(json.JSONEncoder):
 
 
 def _get_class(name: str) -> Callable:
+    """Helper to dynamically retrieve a class from a string name."""
     for module in [layers, activations, losses, optimizers, metrics]:
         if hasattr(module, name):
             return cast(Callable, getattr(module, name))
@@ -33,6 +40,19 @@ def _get_class(name: str) -> Callable:
 
 
 def save_model(model: "Model", filepath: str) -> None:
+    """Saves the full model state to a `.npz` archive.
+
+    The archive contains:
+    1.  `architecture` (JSON): Configuration of layers (type, size, etc.).
+    2.  `model_config` (JSON): Loss, Optimizer config, and Optimizer globals (learning rate, etc.).
+    3.  `layer_{i}_{param}`: Raw numpy arrays for weights and biases.
+    4.  `layer_{i}_state_{name}`: Internal state (e.g., BatchNorm moving averages).
+    5.  `optimizer_{param}_{layer_param}`: Optimizer state (momentum, velocity) for each parameter.
+
+    Args:
+        model (Model): The model instance to save.
+        filepath (str): Destination path. If extension is missing, `.npz` is appended.
+    """
     layers_config: list = []
     for layer in model.layers:
         layers_config.append(layer.get_config())
@@ -66,6 +86,18 @@ def save_model(model: "Model", filepath: str) -> None:
 
 
 def load_model(path: str | Path) -> "Model":
+    """Loads a full model from a `.npz` archive.
+
+    This function instantiates a new `Model` object, rebuilds the layer graph,
+    initializes the optimizer and loss function, and then loads all weights
+    and states (including optimizer momentum) into memory.
+
+    Args:
+        path (str | Path): Path to the `.npz` file.
+
+    Returns:
+        Model: The fully restored model, ready for training or inference.
+    """
     from .model import Model
 
     filepath: str = str(path) if isinstance(path, Path) else path
@@ -113,6 +145,15 @@ def load_model(path: str | Path) -> "Model":
 
 
 def get_model_weights(layers: list[Layer], optimizer_params: dict | None = None) -> dict:
+    """Extracts all weights and states from layers and optimizer.
+
+    Args:
+        layers (list[Layer]): The layers to extract from.
+        optimizer_params (dict | None, optional): The specific optimizer parameters (momentums/velocities).
+
+    Returns:
+        dict: A flat dictionary mapping logical names to numpy arrays.
+    """
     weights_dict: dict = {}
     for i, layer in enumerate(layers):
         if hasattr(layer, "params"):
@@ -140,6 +181,13 @@ def get_model_weights(layers: list[Layer], optimizer_params: dict | None = None)
 
 
 def restore_model_weights(layers: list[Layer], weights_dict: dict, optimizer: Optimizer | None = None) -> None:
+    """Restores weights and states to layers and optimizer.
+
+    Args:
+        layers (list[Layer]): The target layers to load weights into.
+        weights_dict (dict): The dictionary containing loaded weights.
+        optimizer (Optimizer | None, optional): The target optimizer to load state into.
+    """
     for i, layer in enumerate(layers):
         if hasattr(layer, "params"):
             current_params = {}

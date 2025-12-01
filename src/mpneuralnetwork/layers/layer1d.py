@@ -3,6 +3,22 @@ from .layer import Layer, Lit_W
 
 
 class Dense(Layer):
+    """Fully Connected (Dense) Layer.
+
+    Every neuron in the input is connected to every neuron in the output.
+
+    Operation:
+        `Y = X @ W + b`
+
+    Attributes:
+        output_size (int): Dimensionality of the output space.
+        input_size (int): Dimensionality of the input space.
+        initialization (Lit_W): Weight initialization method ("auto", "he", "xavier").
+        no_bias (bool): Whether to disable the bias vector.
+        weights (ArrayType): Weight matrix of shape (input_size, output_size).
+        biases (ArrayType): Bias vector of shape (1, output_size).
+    """
+
     def __init__(
         self,
         output_size: int,
@@ -10,6 +26,14 @@ class Dense(Layer):
         initialization: Lit_W = "auto",
         no_bias: bool = False,
     ) -> None:
+        """Initializes the Dense layer.
+
+        Args:
+            output_size (int): Number of neurons in this layer.
+            input_size (int | None, optional): Number of input features. If None, inferred at build time.
+            initialization (Lit_W, optional): Weight init strategy. Defaults to "auto".
+            no_bias (bool, optional): If True, bias is not used. Defaults to False.
+        """
         super().__init__(output_shape=output_size, input_shape=input_size)
         self.initialization: Lit_W = initialization
         self.no_bias: bool = no_bias
@@ -42,6 +66,14 @@ class Dense(Layer):
             self.init_weights(self.initialization, self.no_bias)
 
     def init_weights(self, method: Lit_W, no_bias: bool) -> None:
+        """Initializes weights using the specified method.
+
+        Args:
+            method (Lit_W): Initialization method.
+                - "he": Kaiming He initialization (for ReLU).
+                - "xavier": Xavier Glorot initialization (for Sigmoid/Tanh).
+            no_bias (bool): Whether to disable bias (e.g. if followed by BatchNorm).
+        """
         std_dev = 0.1
 
         if method == "he":
@@ -59,6 +91,15 @@ class Dense(Layer):
             self.biases_gradient = xp.zeros_like(self.biases, dtype=DTYPE)
 
     def forward(self, input_batch: ArrayType, training: bool = True) -> ArrayType:
+        """Performs forward propagation.
+
+        Args:
+            input_batch (ArrayType): Input data of shape (batch_size, input_size).
+            training (bool, optional): Unused for Dense layer. Defaults to True.
+
+        Returns:
+            ArrayType: Output data of shape (batch_size, output_size).
+        """
         self.input = input_batch
 
         res: ArrayType = self.input @ self.weights
@@ -67,6 +108,16 @@ class Dense(Layer):
         return res
 
     def backward(self, output_gradient_batch: ArrayType) -> ArrayType:
+        """Performs backward propagation.
+
+        Computes gradients for weights, biases, and inputs.
+
+        Args:
+            output_gradient_batch (ArrayType): Gradient w.r.t output (batch_size, output_size).
+
+        Returns:
+            ArrayType: Gradient w.r.t input (batch_size, input_size).
+        """
         self.weights_gradient = self.input.T @ output_gradient_batch
         if not self.no_bias:
             self.biases_gradient = xp.sum(output_gradient_batch, axis=0, keepdims=True, dtype=DTYPE)  # type: ignore
@@ -88,7 +139,28 @@ class Dense(Layer):
 
 
 class Dropout(Layer):
+    """Dropout Layer for regularization.
+
+    Randomly sets input units to 0 with a frequency of `probability` at each step during training time,
+    which helps prevent overfitting.
+
+    Training:
+        `output = input * mask` (where mask is Bernoulli(1-p))
+        Values are scaled by `1/(1-p)` to preserve magnitude.
+
+    Inference:
+        `output = input` (Identity function).
+
+    Attributes:
+        probability (float): The dropout rate (fraction of input units to drop).
+    """
+
     def __init__(self, probability: float = 0.5) -> None:
+        """Initializes Dropout.
+
+        Args:
+            probability (float, optional): Fraction of the input units to drop. Defaults to 0.5.
+        """
         super().__init__()
         self.probability: float = probability
         self.mask: ArrayType
@@ -99,6 +171,15 @@ class Dropout(Layer):
         return config
 
     def forward(self, input_batch: ArrayType, training: bool = True) -> ArrayType:
+        """Applies dropout to the input.
+
+        Args:
+            input_batch (ArrayType): Input data.
+            training (bool, optional): If True, applies random dropout. If False, returns input as is.
+
+        Returns:
+            ArrayType: Processed input.
+        """
         if not training:
             return input_batch
 
@@ -108,12 +189,44 @@ class Dropout(Layer):
         return res
 
     def backward(self, output_gradient_batch: ArrayType) -> ArrayType:
+        """Propagates gradients through the dropout mask.
+
+        Args:
+            output_gradient_batch (ArrayType): Gradient from next layer.
+
+        Returns:
+            ArrayType: Gradient w.r.t input (zeroed out where inputs were dropped).
+        """
         grad: ArrayType = output_gradient_batch * self.mask
         return grad
 
 
 class BatchNormalization(Layer):
+    """Batch Normalization Layer (1D).
+
+    Normalize the activations of the previous layer at each batch, i.e. applies a transformation
+    that maintains the mean activation close to 0 and the activation standard deviation close to 1.
+
+    Training:
+        Uses batch statistics (mean, variance) to normalize. Updates running moving averages.
+
+    Inference:
+        Uses learned running statistics (cache_m, cache_v) to normalize.
+
+    Attributes:
+        momentum (float): Momentum for the moving average updating.
+        epsilon (float): Small float added to variance to avoid dividing by zero.
+        gamma (ArrayType): Learnable scale parameter.
+        beta (ArrayType): Learnable shift parameter.
+    """
+
     def __init__(self, momentum: float = 0.9, epsilon: float = 1e-8) -> None:
+        """Initializes BatchNormalization.
+
+        Args:
+            momentum (float, optional): Momentum for moving average (typically 0.9 or 0.99). Defaults to 0.9.
+            epsilon (float, optional): Epsilon for stability. Defaults to 1e-8.
+        """
         super().__init__()
         self.momentum: float = momentum
         self.epsilon: float = epsilon
@@ -146,6 +259,16 @@ class BatchNormalization(Layer):
         return config
 
     def forward(self, input_batch: ArrayType, training: bool = True) -> ArrayType:
+        """Performs batch normalization.
+
+        Args:
+            input_batch (ArrayType): Input data of shape (batch_size, input_size).
+            training (bool, optional): If True, uses batch stats and updates running averages.
+                If False, uses running averages.
+
+        Returns:
+            ArrayType: Normalized and scaled data.
+        """
         self.input = input_batch
 
         mean: ArrayType
@@ -171,6 +294,14 @@ class BatchNormalization(Layer):
         return res
 
     def backward(self, output_gradient_batch: ArrayType) -> ArrayType:
+        """Computes gradients for BN.
+
+        Args:
+            output_gradient_batch (ArrayType): Gradient w.r.t output.
+
+        Returns:
+            ArrayType: Gradient w.r.t input.
+        """
         self.gamma_gradient = xp.sum(self.x_norm * output_gradient_batch, axis=0, keepdims=True, dtype=DTYPE)  # type: ignore
         self.beta_gradient = xp.sum(output_gradient_batch, axis=0, keepdims=True, dtype=DTYPE)  # type: ignore
 

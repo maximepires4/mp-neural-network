@@ -9,13 +9,33 @@ Lit_R = Literal["L1", "L2"]
 
 
 class Optimizer:
+    """Base class for all optimization algorithms.
+
+    Optimizers update the weights of the network layers to minimize the loss function.
+    They also handle regularization (L1/L2).
+    """
+
     def __init__(self, learning_rate: float, regularization: Lit_R, weight_decay: float) -> None:
+        """Initializes the optimizer.
+
+        Args:
+            learning_rate (float): The step size for parameter updates.
+            regularization (Lit_R): Type of regularization ('L1' or 'L2').
+            weight_decay (float): The strength of the regularization (lambda).
+        """
         self.learning_rate: float = learning_rate
         self.regularization: Lit_R = regularization
         self.weight_decay: float = weight_decay
 
     @abstractmethod
     def step(self, layers: list[Layer]) -> None:
+        """Performs a single optimization step.
+
+        Iterates over all layers and updates their parameters based on stored gradients.
+
+        Args:
+            layers (list[Layer]): List of layers containing parameters to update.
+        """
         pass
 
     def get_config(self) -> dict:
@@ -27,6 +47,15 @@ class Optimizer:
         }
 
     def apply_regularization(self, param_name: str, param: ArrayType) -> ArrayType | int:
+        """Computes the regularization gradient term.
+
+        Args:
+            param_name (str): Name of the parameter (e.g., 'weights', 'bias').
+            param (ArrayType): The parameter value.
+
+        Returns:
+            ArrayType | int: The gradient contribution from regularization.
+        """
         regularization: ArrayType
         if "bias" in param_name or "beta" in param_name or "gamma" in param_name:
             return 0
@@ -40,10 +69,24 @@ class Optimizer:
 
     @property
     def params(self) -> dict:
+        """Returns the optimizer's internal state (velocities, moments)."""
         return {}
 
 
 class SGD(Optimizer):
+    """Stochastic Gradient Descent (SGD) with Momentum.
+
+    Update rule:
+        1. `v = momentum * v - lr * gradient`
+        2. `w = w + v`
+
+    Args:
+        learning_rate (float, optional): Step size. Defaults to 0.01.
+        regularization (Lit_R, optional): 'L1' or 'L2'. Defaults to 'L2'.
+        weight_decay (float, optional): Regularization strength. Defaults to 0.001.
+        momentum (float, optional): Momentum factor (0 to 1). Defaults to 0.1.
+    """
+
     def __init__(
         self,
         learning_rate: float = 0.01,
@@ -91,6 +134,22 @@ class SGD(Optimizer):
 
 
 class RMSprop(Optimizer):
+    """RMSprop optimizer.
+
+    Adapts learning rates by dividing the gradient by a running average of its recent magnitude.
+
+    Update rule:
+        1. `cache = decay * cache + (1 - decay) * grad^2`
+        2. `w = w - lr * grad / (sqrt(cache) + epsilon)`
+
+    Args:
+        learning_rate (float): Defaults to 0.001.
+        regularization (Lit_R): 'L1' or 'L2'.
+        weight_decay (float): Defaults to 0.001.
+        decay_rate (float, optional): Discounting factor. Defaults to 0.9.
+        epsilon (float, optional): Small value for numerical stability. Defaults to 1e-8.
+    """
+
     def __init__(
         self,
         learning_rate: float = 0.001,
@@ -147,6 +206,25 @@ class RMSprop(Optimizer):
 
 
 class Adam(Optimizer):
+    """Adam Optimizer (Adaptive Moment Estimation).
+
+    Combines Momentum and RMSprop.
+    Implements **Decoupled Weight Decay (AdamW)** when `regularization='L2'`.
+
+    Update rule:
+        1. `m = beta1 * m + (1 - beta1) * g`
+        2. `v = beta2 * v + (1 - beta2) * g^2`
+        3. `m_hat = m / (1 - beta1^t)`
+        4. `v_hat = v / (1 - beta2^t)`
+        5. `w = w - lr * m_hat / (sqrt(v_hat) + eps)`
+        6. If L2: `w = w - lr * decay * w` (Decoupled)
+
+    Args:
+        beta1 (float, optional): Decay rate for first moment. Defaults to 0.9.
+        beta2 (float, optional): Decay rate for second moment. Defaults to 0.999.
+        epsilon (float, optional): Stability term. Defaults to 1e-8.
+    """
+
     def __init__(
         self,
         learning_rate: float = 0.001,

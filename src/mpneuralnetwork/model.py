@@ -10,6 +10,19 @@ from .serialization import get_model_weights, restore_model_weights
 
 
 class Model:
+    """The main container for building and training neural networks.
+
+    This class handles the assembly of layers, the training loop, validation,
+    and prediction. It also implements "smart features" like automatic weight
+    initialization and metric selection.
+
+    Attributes:
+        layers (list[Layer]): List of layers in the network.
+        loss (Loss): The loss function to minimize.
+        optimizer (Optimizer): The optimization algorithm.
+        metrics (list[Metric]): List of metrics to monitor.
+    """
+
     def __init__(
         self,
         layers: list[Layer],
@@ -17,6 +30,14 @@ class Model:
         optimizer: Optimizer | None = None,
         metrics: list[Metric] | None = None,
     ) -> None:
+        """Initializes the Model.
+
+        Args:
+            layers (list[Layer]): The sequence of layers.
+            loss (Loss): The objective function.
+            optimizer (Optimizer | None, optional): Optimizer instance. Defaults to SGD().
+            metrics (list[Metric] | None, optional): Metrics to track. Defaults to [].
+        """
         self.layers: list[Layer] = layers
         self.loss: Loss = loss
         self.optimizer: Optimizer = SGD() if optimizer is None else optimizer
@@ -29,6 +50,10 @@ class Model:
         self._init_smart_metrics()
 
     def _build_graph(self) -> None:
+        """Builds the computational graph by connecting layers.
+
+        Propagates shape information from the first layer through the rest of the network.
+        """
         first_layer = self.layers[0]
 
         if not hasattr(first_layer, "input_size") or first_layer.input_size is None:
@@ -45,6 +70,11 @@ class Model:
                 current_output_size = layer.output_shape
 
     def _init_smart_weights(self) -> None:
+        """Automatically initializes weights based on activation functions.
+
+        Uses He initialization for ReLU-like activations and Xavier for Sigmoid/Tanh.
+        Also handles bias disabling for BatchNormalization.
+        """
         for i in range(len(self.layers)):
             layer = self.layers[i]
 
@@ -72,6 +102,13 @@ class Model:
                 layer.init_weights(method, no_bias)
 
     def _init_output_activation(self) -> None:
+        """Configures the final activation for numerical stability.
+
+        The framework uses logits for Loss functions. This method ensures the
+        user hasn't redundantly added a Softmax/Sigmoid layer at the end if the
+        loss function expects logits, and sets up the implicit output activation
+        for predictions.
+        """
         if isinstance(self.loss, BinaryCrossEntropy):
             self.output_activation = Sigmoid()
 
@@ -85,6 +122,11 @@ class Model:
             self.layers = self.layers[:-1]
 
     def _init_smart_metrics(self) -> None:
+        """Automatically selects default metrics if none are provided.
+
+        - **Regression (MSE Loss):** Defaults to [RMSE, R2Score].
+        - **Classification (CrossEntropy):** Defaults to [Accuracy, F1Score].
+        """
         if len(self.metrics) != 0:
             return
 
@@ -105,6 +147,19 @@ class Model:
         model_checkpoint: bool = True,
         compute_train_metrics: bool = False,
     ) -> None:
+        """Trains the model using the provided data.
+
+        Args:
+            X_train (ArrayType): Training features.
+            y_train (ArrayType): Training labels (one-hot encoded for classification).
+            epochs (int): Number of complete passes through the dataset.
+            batch_size (int): Number of samples per gradient update.
+            evaluation (tuple[ArrayType, ArrayType] | None, optional): Explicit validation set (X_val, y_val).
+            auto_evaluation (float, optional): Fraction of training data to use for validation if 'evaluation' is None.
+            early_stopping (int | None, optional): Number of epochs with no improvement to wait before stopping.
+            model_checkpoint (bool, optional): Whether to restore the best weights after training. Defaults to True.
+            compute_train_metrics (bool, optional): Whether to compute expensive metrics on training data every epoch.
+        """
         X_t = to_device(X_train.astype(DTYPE, copy=False))
         y_t = to_device(y_train.astype(DTYPE, copy=False))
 
@@ -225,6 +280,17 @@ class Model:
         training: bool = False,
         compute_metrics: bool = True,
     ) -> tuple[ArrayType, dict[str, float]]:
+        """Evaluates the model on a given batch.
+
+        Args:
+            X (ArrayType): Input features.
+            y (ArrayType): True labels.
+            training (bool): Whether in training mode (affects Dropout/BatchNorm).
+            compute_metrics (bool): Whether to calculate extra metrics (Accuracy, etc.).
+
+        Returns:
+            tuple[ArrayType, dict[str, float]]: Predictions and dictionary of metric values.
+        """
         logits: ArrayType = X.astype(DTYPE, copy=False)
         for layer in self.layers:
             logits = layer.forward(logits, training=training)
@@ -254,6 +320,12 @@ class Model:
         return predictions, metric_dict
 
     def test(self, X_test: ArrayType, y_test: ArrayType) -> None:
+        """Evaluates the model on the test set and prints results.
+
+        Args:
+            X_test (ArrayType): Test features.
+            y_test (ArrayType): Test labels.
+        """
         X_test = to_device(X_test)
         y_test = to_device(y_test)
 
@@ -264,6 +336,17 @@ class Model:
             print(f"   {key} = {value:.4f}")
 
     def predict(self, X: ArrayType) -> ArrayType:
+        """Generates predictions for the input samples.
+
+        Automatically applies the final activation function (Softmax/Sigmoid)
+        to return probabilities/values instead of logits.
+
+        Args:
+            X (ArrayType): Input features.
+
+        Returns:
+            ArrayType: Model predictions (on CPU).
+        """
         y: ArrayType = to_device(X.astype(DTYPE, copy=False))
         for layer in self.layers:
             y = layer.forward(y, training=False)
