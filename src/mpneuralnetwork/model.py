@@ -355,3 +355,27 @@ class Model:
             y = self.output_activation.forward(y)
 
         return to_host(y)
+
+    def get_weights(self, optimizer_params: dict | None = None) -> dict:
+        """DEPRECATED: Use `mpneuralnetwork.serialization.get_model_weights` instead."""
+        import warnings
+
+        warnings.warn(
+            "Model.get_weights() is deprecated and will be removed in a future version. "
+            "Please use mpneuralnetwork.serialization.get_model_weights(model.layers) instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return get_model_weights(self.layers, optimizer_params)
+
+    def restore_weights(self, weights_dict: dict, optimizer: Optimizer | None = None) -> None:
+        """DEPRECATED: Use `mpneuralnetwork.serialization.restore_model_weights` instead."""
+        import warnings
+
+        warnings.warn(
+            "Model.restore_weights() is deprecated and will be removed in a future version. "
+            "Please use mpneuralnetwork.serialization.restore_model_weights(model.layers, ...) instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        restore_model_weights(self.layers, weights_dict, optimizer)
