@@ -105,15 +105,22 @@ class CategoricalCrossEntropy(Loss):
     Used for multi-class classification problems (one-hot encoded targets).
     """
 
-    def __init__(self) -> None:
-        self.softmax = Softmax()
+    def __init__(self, temperature: float = 1.0, epsilon: float = 1e-8) -> None:
+        """Initializes the Categorical Cross Entropy loss.
+
+        Args:
+            temperature (float, optional): Temperature parameter for the softmax. Defaults to 1.0.
+            epsilon (float, optional): Small float added to denominator to avoid dividing by zero. Defaults to 1e-8.
+        """
+        self.temperature = temperature
+        self.epsilon = epsilon
+        self.softmax = Softmax(temperature=temperature, epsilon=epsilon)
 
     def direct(self, output: ArrayType, output_expected: ArrayType) -> float:
-        epsilon = 1e-9
         predictions = self.softmax.forward(output)
         res: float = xp.mean(
             -xp.sum(
-                output_expected * xp.log(predictions + epsilon, dtype=DTYPE),
+                output_expected * xp.log(predictions + self.epsilon, dtype=DTYPE),
                 axis=1,
                 dtype=DTYPE,
             ),
@@ -123,5 +130,5 @@ class CategoricalCrossEntropy(Loss):
 
     def prime(self, output: ArrayType, output_expected: ArrayType) -> ArrayType:
         predictions = self.softmax.forward(output)
-        grad: ArrayType = (predictions - output_expected) / output.shape[0]
+        grad: ArrayType = ((predictions - output_expected) / (self.temperature + self.epsilon)) / output.shape[0]
         return grad

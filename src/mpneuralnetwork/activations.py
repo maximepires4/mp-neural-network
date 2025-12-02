@@ -163,11 +163,22 @@ class Softmax(Layer):
     """Softmax activation function.
 
     Formula:
-        `f(x)_i = exp(x_i) / sum(exp(x_j))`
+        `f(x)_i = exp(x_i / T) / sum(exp(x_j / T))`
 
     Typically used in the output layer for multi-class classification.
     Converts a vector of K real numbers into a probability distribution of K possible outcomes.
+    The temperature parameter T is used to scale the logits before computing the softmax.
     """
+
+    def __init__(self, temperature: float = 1.0, epsilon: float = 1e-8) -> None:
+        """Initializes the Softmax layer.
+
+        Args:
+            temperature (float, optional): Temperature parameter. Defaults to 1.0.
+            epsilon (float, optional): Small float added to denominator to avoid dividing by zero. Defaults to 1e-8.
+        """
+        self.temperature: float = temperature
+        self.epsilon: float = epsilon
 
     def forward(self, input_batch: ArrayType, training: bool = True) -> ArrayType:
         """Applies Softmax function.
@@ -179,8 +190,11 @@ class Softmax(Layer):
         Returns:
             ArrayType: Probabilities of shape (batch_size, num_classes).
         """
-        m = xp.max(input_batch, axis=1, keepdims=True)
-        e = xp.exp(input_batch - m, dtype=DTYPE)
+        scaled_logits = input_batch / (self.temperature + self.epsilon)
+
+        m = xp.max(scaled_logits, axis=1, keepdims=True)
+        e = xp.exp(scaled_logits - m, dtype=DTYPE)
+
         self.output = e / xp.sum(e, axis=1, keepdims=True, dtype=DTYPE)
         return self.output
 
@@ -198,7 +212,7 @@ class Softmax(Layer):
         """
         sum_s_times_g: ArrayType = xp.sum(self.output * output_gradient_batch, axis=1, keepdims=True, dtype=DTYPE)  # type: ignore[assignment]
 
-        res: ArrayType = self.output * (output_gradient_batch - sum_s_times_g)
+        res: ArrayType = (self.output * (output_gradient_batch - sum_s_times_g)) / (self.temperature + self.epsilon)
         return res
 
     @property
