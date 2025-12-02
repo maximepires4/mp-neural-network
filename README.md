@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./images/logo.svg" alt="MPNeuralNetwork Logo" width="900"/>
+  <img src="https://raw.githubusercontent.com/maximepires4/mp-neural-network/main/docs/assets/logo-full.svg" alt="MPNeuralNetwork Logo" width="900"/>
 </p>
 
 # **MPNeuralNetwork 🧠**
@@ -10,8 +10,10 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Documentation](https://img.shields.io/badge/docs-material-blue.svg)](https://maximepires4.github.io/mp-neural-network/)
 ![Status](https://img.shields.io/badge/Status-Stable-brightgreen?style=flat-square)
+[![NumPy](https://img.shields.io/badge/numpy-%23013243.svg?style=flat&logo=numpy&logoColor=white)](https://github.com/numpy/numpy)
+[![CuPy](https://img.shields.io/badge/cupy-%2376B900.svg?style=flat&logo=nvidia&logoColor=white)](https://github.com/cupy/cupy)
 
-**A fully vectorized Deep Learning framework built from scratch using only NumPy.**
+**A fully vectorized Deep Learning framework built from scratch using only [NumPy](https://github.com/numpy/numpy) and [CuPy](https://github.com/cupy/cupy).**
 
 [**📖 Read the Full Documentation**](https://maximepires4.github.io/mp-neural-network/)
 
@@ -38,7 +40,7 @@ MPNeuralNetwork goes beyond basic matrix operations by incorporating an **"intel
 * **Numerical Stability:** Internally handles logits for Softmax/Sigmoid to prevent overflow.
 * **Full Serialization:** Save/Load model state to `.npz` files.
 
-[**👉 Learn more about the internal engine**](docs/INTERNALS.md)
+[**👉 Learn more about the internal engine**](https://maximepires4.github.io/mp-neural-network/INTERNALS)
 
 ## **Installation**
 
@@ -76,7 +78,7 @@ model = Model(
 model.train(X_train, y_train, epochs=10, batch_size=32, auto_evaluation=0.2)
 ```
 
-[**👉 See full tutorials in the User Guide**](docs/USER_GUIDE.md)
+[**👉 See full tutorials in the User Guide**](https://maximepires4.github.io/mp-neural-network/USER_GUIDE)
 
 ## **Architecture & Performance**
 
@@ -88,11 +90,11 @@ The training loop handles 3D/2D tensors, replacing slow Python loops with NumPy'
 
 The framework enforces **Float32** precision globally to halve memory usage and double bandwidth. Recent benchmarks show a **26% speedup** and **50% memory reduction** compared to the initial implementation.
 
-[**👉 Read the Optimization & Benchmarking Guide**](docs/OPTIMIZATION_GUIDE.md)
+[**👉 Read the Optimization & Benchmarking Guide**](https://maximepires4.github.io/mp-neural-network/OPTIMIZATION_GUIDE)
 
 ## **Roadmap**
 
-[**👉 View the full Roadmap**](docs/ROADMAP.md)
+[**👉 View the full Roadmap**](https://maximepires4.github.io/mp-neural-network/ROADMAP)
 
 ## **Author**
 

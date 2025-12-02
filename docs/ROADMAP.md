@@ -2,14 +2,7 @@
 
 This roadmap outlines the planned improvements and features for `mp-neural-network`.
 
-## Upcoming features (v1.1)
-
-- **GPU Acceleration:** Explore optional CuPy backend for NVIDIA GPU support.
-- **Advanced Documentation:** Add Google-style docstrings to all public classes
-- **CNN Padding and strides**: Support for padding and strides in convolutional layers.
-- **Softmax temperature:** Support for temperature scaling in softmax.
-
-## Future / Exploration
+## Upcoming Features
 
 - **RNN/LSTM Layers:** Support for sequential data.
 - **Channels last optimization:** Optimize convolutional layers for channels_last format.
@@ -18,7 +11,16 @@ This roadmap outlines the planned improvements and features for `mp-neural-netwo
 - **Stable parameter identification system**: Remove dependency on `id(param)` for tracking optimizer states (moments/velocities), implement a more robust approach (e.g., persistent UUIDs or structured naming).
 - **Explicit Shape Checking:** Add clear error messages when connecting incompatible layers
 
-## Completed Features (v1.0+)
+## Completed Features
+
+### v1.1
+
+- **GPU Acceleration:** Explore optional CuPy backend for NVIDIA GPU support.
+- **Advanced Documentation:** Add Google-style docstrings to all public classes
+- **CNN Padding and strides**: Support for padding and strides in convolutional layers.
+- **Softmax temperature:** Support for temperature scaling in softmax.
+
+### v1.0
 
 - **Float32 Transition:** Global `DTYPE = np.float32` enforced to reduce RAM by ~50%.
 - **In-Place Operations:** Eliminated redundant copies in `train`, `predict`, and `evaluate`.
