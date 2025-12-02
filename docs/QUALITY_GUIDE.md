@@ -1,6 +1,6 @@
 # Code Quality & Contribution Guide
 
-This guide outlines the standards, tools, and workflows used in `mp-neural-network` to ensure a robust, maintainable, and high-quality codebase.
+This guide outlines the standards, tools, and workflows used in MPNeuralNetwork to ensure a robust, maintainable, and high-quality codebase.
 
 ---
 
@@ -14,6 +14,7 @@ We rely on a strict set of tools to enforce quality automatically.
 | **[Mypy](https://mypy-lang.org/)** | Static Type Checker. | Strictly enforced on `src/mpneuralnetwork` |
 | **[Pytest](https://docs.pytest.org/)** | Unit Testing framework. | `tests/` |
 | **[Coverage](https://coverage.readthedocs.io/)** | Code coverage measurement. | `src/mpneuralnetwork` (must cover >90%) |
+| **[MkDocs](https://www.mkdocs.org/)** | Documentation Generator. | `docs/` |
 
 ---
 
@@ -24,7 +25,7 @@ We rely on a strict set of tools to enforce quality automatically.
 Install the project in editable mode with all development dependencies:
 
 ```bash
-pip install -e .[dev,test]
+pip install -e .[dev,test,docs]
 pre-commit install
 ```
 
@@ -57,6 +58,16 @@ Executes the test suite and reports coverage.
 coverage run -m pytest
 coverage report -m
 ```
+
+#### **Preview Documentation**
+
+To preview the documentation site locally as you edit markdown files:
+
+```bash
+mkdocs serve
+```
+
+Open `http://127.0.0.1:8000` in your browser.
 
 ---
 

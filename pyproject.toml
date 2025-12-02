@@ -35,7 +35,7 @@ dependencies = [
 Homepage = "https://pypi.org/project/mpneuralnetwork/"
 Repository = "https://github.com/maximepires4/mp-neural-network"
 Issues = "https://github.com/maximepires4/mp-neural-network/issues"
-Documentation = "https://github.com/maximepires4/mp-neural-network#readme"
+Documentation = "https://maximepires4.github.io/mp-neural-network/"
 
 [project.optional-dependencies]
 build = [
@@ -59,6 +59,10 @@ dev = [
 profile = [
   "snakeviz",
   "memray",
+]
+docs = [
+  "mkdocs-material",
+  "mkdocstrings[python]",
 ]
 
 [tool.hatch.build.targets.sdist]
@@ -104,7 +108,7 @@ ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 minversion = "7.0"
-addopts = "-ra -q --cov=mpneuralnetwork --cov-report=term-missing"
+addopts = "-ra --cov=mpneuralnetwork --cov-report=term-missing"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 

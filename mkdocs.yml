@@ -1,0 +1,41 @@
+site_name: MPNeuralNetwork
+site_url: https://maximepires4.github.io/mp-neural-network/
+repo_url: https://github.com/maximepires4/mp-neural-network
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - content.code.copy
+    - navigation.top
+    - toc.follow
+
+plugins:
+  - search
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          paths: [src]
+          options:
+            show_root_heading: true
+            show_source: true
+
+nav:
+  - Home: index.md
+  - Guides:
+    - User Guide: USER_GUIDE.md
+    - Architecture & Internals: INTERNALS.md
+    - Optimization Guide: OPTIMIZATION_GUIDE.md
+    - Quality Guide: QUALITY_GUIDE.md
+    - Roadmap: ROADMAP.md
+  - API Reference:
+    - Model: reference/model.md
+    - Layers: reference/layers.md
+    - Activations: reference/activations.md
+    - Losses: reference/losses.md
+    - Optimizers: reference/optimizers.md
+    - Metrics: reference/metrics.md
+    - Serialization: reference/serialization.md
+    - Backend: reference/backend.md
