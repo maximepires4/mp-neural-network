@@ -1,3 +1,5 @@
+from typing import Literal
+
 from .. import DTYPE, ArrayType, xp
 from .layer import Layer, Lit_W
 from .utils import col2im, im2col
@@ -13,6 +15,8 @@ class Convolutional(Layer):
     Attributes:
         output_depth (int): Number of output channels (filters).
         kernel_size (int): Size of the square convolution kernel.
+        stride (int): Step size of the convolution.
+        padding (int): Amount of zero-padding applied to both sides of the input.
         initialization (Lit_W): Weight initialization strategy.
         no_bias (bool): Whether to disable bias.
         kernels (ArrayType): Learnable filters (output_depth, input_depth, k, k).
@@ -26,6 +30,8 @@ class Convolutional(Layer):
         input_shape: tuple | None = None,
         initialization: Lit_W = "auto",
         no_bias: bool = False,
+        padding: int | Literal["valid", "same"] = "valid",
+        stride: int = 1,
     ) -> None:
         """Initializes the Convolutional layer.
 
@@ -35,18 +41,34 @@ class Convolutional(Layer):
             input_shape (tuple | None, optional): Shape of input (depth, height, width).
             initialization (Lit_W, optional): Weight init method ("auto", "he", "xavier").
             no_bias (bool, optional): Disable bias. Defaults to False.
+            padding (int | str, optional): Padding strategy. Can be an integer (amount of padding),
+                "valid" (no padding), or "same" (padding to preserve spatial dimensions with stride=1).
+                Defaults to "valid".
+            stride (int, optional): Stride of the convolution. Defaults to 1.
         """
         super().__init__()
         self.output_depth: int = output_depth
         self.kernel_size: int = kernel_size
         self.initialization: Lit_W = initialization
         self.no_bias: bool = no_bias
+        self.stride: int = stride
+        self.padding_arg: int | Literal["valid", "same"] = padding
 
-        self.X_col: ArrayType
+        self.padding: int
+        if self.padding_arg == "valid":
+            self.padding = 0
+        elif self.padding_arg == "same":
+            self.padding = (self.kernel_size - 1) // 2
+        elif isinstance(self.padding_arg, int):
+            self.padding = self.padding_arg
+        else:
+            raise ValueError("Padding must be 'valid', 'same', or an integer.")
+
         self.kernels: ArrayType
         self.kernels_gradient: ArrayType
         self.biases: ArrayType
         self.biases_gradient: ArrayType
+        self.input_padded_shape: tuple
 
         if input_shape is not None:
             self.build(input_shape)
@@ -60,6 +82,8 @@ class Convolutional(Layer):
                 "input_shape": self.input_shape,
                 "initialization": self.initialization,
                 "no_bias": self.no_bias,
+                "stride": self.stride,
+                "padding": self.padding_arg,
             }
         )
         return config
@@ -69,10 +93,9 @@ class Convolutional(Layer):
 
         _, input_height, input_width = self.input_shape
 
-        output_height = input_height - self.kernel_size + 1
-        output_width = input_width - self.kernel_size + 1
+        output_height = (input_height - self.kernel_size + 2 * self.padding) // self.stride + 1
+        output_width = (input_width - self.kernel_size + 2 * self.padding) // self.stride + 1
         self.output_shape = (self.output_depth, output_height, output_width)
-        self.output_shape = self.output_shape
 
         if self.initialization != "auto":
             self.init_weights(self.initialization, self.no_bias)
@@ -115,18 +138,29 @@ class Convolutional(Layer):
             ArrayType: Feature maps (N, C_out, H_out, W_out).
         """
         self.input = input_batch
-        batch_size = input_batch.shape[0]
 
-        self.X_col = im2col(input_batch, self.kernel_size).reshape(-1, input_batch.shape[1] * self.kernel_size * self.kernel_size)
+        if self.padding > 0:
+            input_batch_padded = xp.pad(
+                input_batch,
+                (
+                    (0, 0),
+                    (0, 0),
+                    (self.padding, self.padding),
+                    (self.padding, self.padding),
+                ),
+            )
+        else:
+            input_batch_padded = input_batch
 
-        k_col = self.kernels.reshape(self.output_depth, -1)
+        self.input_padded_shape = input_batch_padded.shape
 
-        _, output_height, output_width = self.output_shape
+        input_windows = im2col(input_batch_padded, self.kernel_size, self.stride)
 
-        output = self.X_col @ k_col.T
+        output = xp.tensordot(input_windows, self.kernels, axes=((3, 4, 5), (1, 2, 3)))
+
         if not self.no_bias:
             output += self.biases
-        output = output.reshape(batch_size, output_height, output_width, self.output_depth)
+
         return output.transpose(0, 3, 1, 2)  # type: ignore[no-any-return]
 
     def backward(self, output_gradient_batch: ArrayType) -> ArrayType:
@@ -140,28 +174,46 @@ class Convolutional(Layer):
         Returns:
             ArrayType: Gradient w.r.t input.
         """
-        dOut_col = output_gradient_batch.transpose(0, 2, 3, 1).reshape(-1, self.output_depth)
+        grad_transposed = output_gradient_batch.transpose(0, 2, 3, 1)
 
         if not self.no_bias:
-            self.biases_gradient = xp.sum(dOut_col, axis=0, dtype=DTYPE)  # type: ignore
+            self.biases_gradient = xp.sum(grad_transposed, axis=(0, 1, 2), dtype=DTYPE)
 
-        k_col = dOut_col.T @ self.X_col
-        self.kernels_gradient = k_col.reshape(self.output_depth, self.input_shape[0], self.kernel_size, self.kernel_size)
+        if self.padding > 0:
+            input_batch_padded = xp.pad(
+                self.input,
+                (
+                    (0, 0),
+                    (0, 0),
+                    (self.padding, self.padding),
+                    (self.padding, self.padding),
+                ),
+            )
+        else:
+            input_batch_padded = self.input
 
-        W_col = self.kernels.reshape(self.output_depth, -1)
-        dX_col = dOut_col @ W_col
+        input_windows = im2col(input_batch_padded, self.kernel_size, self.stride)
 
-        batch_size = output_gradient_batch.shape[0]
-        dX_col = dX_col.reshape(
-            batch_size,
-            self.output_shape[1],
-            self.output_shape[2],
-            self.input_shape[0],
+        self.kernels_gradient = xp.tensordot(grad_transposed, input_windows, axes=((0, 1, 2), (0, 1, 2)))
+
+        input_grad_windows = xp.tensordot(grad_transposed, self.kernels, axes=((3), (0)))
+
+        input_grad_windows_transposed = input_grad_windows.transpose(0, 3, 1, 2, 4, 5)
+
+        input_grad_padded = col2im(
+            input_grad_windows_transposed,
+            self.input_padded_shape,
+            self.output_shape,
             self.kernel_size,
-            self.kernel_size,
-        ).transpose(0, 3, 1, 2, 4, 5)
+            self.stride,
+        )
 
-        return col2im(dX_col, self.input.shape, self.output_shape, self.kernel_size)
+        if self.padding > 0:
+            input_grad = input_grad_padded[:, :, self.padding : -self.padding, self.padding : -self.padding]
+        else:
+            input_grad = input_grad_padded
+
+        return input_grad
 
     @property
     def params(self) -> dict[str, tuple[ArrayType, ArrayType]]:
