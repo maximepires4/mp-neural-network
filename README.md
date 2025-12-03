@@ -12,6 +12,8 @@
 ![Status](https://img.shields.io/badge/Status-Stable-brightgreen?style=flat-square)
 [![NumPy](https://img.shields.io/badge/numpy-%23013243.svg?style=flat&logo=numpy&logoColor=white)](https://github.com/numpy/numpy)
 [![CuPy](https://img.shields.io/badge/cupy-%2376B900.svg?style=flat&logo=nvidia&logoColor=white)](https://github.com/cupy/cupy)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![Checked with mypy](https://www.mypy-lang.org/static/mypy_badge.svg)](https://mypy-lang.org/)
 
 **A fully vectorized Deep Learning framework built from scratch using only [NumPy](https://github.com/numpy/numpy) and [CuPy](https://github.com/cupy/cupy).**
 
@@ -34,6 +36,7 @@ In an era of high-level frameworks like PyTorch or TensorFlow, it is easy to tre
 MPNeuralNetwork goes beyond basic matrix operations by incorporating an **"intelligent" engine**.
 
 * **Fully Vectorized:** Optimized for batch processing. Convolutions use **`im2col`** for hardware acceleration.
+* **GPU Acceleration:** Seamless support for NVIDIA GPUs via **CuPy**. Switch backends with a single environment variable.
 * **Early Stopping & Checkpointing:** Automatically monitors validation loss and restores the best weights.
 * **Smart Initialization:** Automatically applies **He Init** (for ReLU) or **Xavier** (for Sigmoid/Tanh).
 * **Comprehensive Regularization:** Supports **Dropout**, **L1/L2 Weight Decay** (AdamW style).
@@ -41,6 +44,15 @@ MPNeuralNetwork goes beyond basic matrix operations by incorporating an **"intel
 * **Full Serialization:** Save/Load model state to `.npz` files.
 
 [**👉 Learn more about the internal engine**](https://maximepires4.github.io/mp-neural-network/INTERNALS)
+
+## **Component Inventory**
+
+| Category | Available Components |
+| :--- | :--- |
+| **Layers** | `Dense`, `Convolutional`, `MaxPooling2D`, `AveragePooling2D`, `Dropout`, `BatchNormalization`, `Flatten` |
+| **Activations** | `ReLU`, `Sigmoid`, `Tanh`, `Softmax`, `PReLU`, `Swish` |
+| **Optimizers** | `SGD`, `RMSprop`, `AdamW` |
+| **Losses** | `MSE`, `BinaryCrossEntropy`, `CategoricalCrossEntropy` |
 
 ## **Installation**
 
@@ -53,13 +65,21 @@ pip install mpneuralnetwork
 ### **MNIST Classification**
 
 ```python
+import numpy as np
+from sklearn.datasets import fetch_openml
+from sklearn.preprocessing import OneHotEncoder
 from mpneuralnetwork.layers import Dense, Dropout
 from mpneuralnetwork.activations import ReLU
 from mpneuralnetwork.losses import CategoricalCrossEntropy
 from mpneuralnetwork.optimizers import Adam
 from mpneuralnetwork.model import Model
 
-# 1. Define the Architecture
+# 1. Load Data (MNIST)
+X, y = fetch_openml('mnist_784', version=1, return_X_y=True, as_frame=False)
+X = (X / 255.0).astype(np.float32) # Normalize & Float32
+y = OneHotEncoder(sparse_output=False).fit_transform(y.reshape(-1, 1))
+
+# 2. Define the Architecture
 network = [
     Dense(128, input_size=784), # Auto-He Init
     ReLU(),
@@ -67,15 +87,15 @@ network = [
     Dense(10)                   # Output Logits
 ]
 
-# 2. Initialize
+# 3. Initialize
 model = Model(
     layers=network,
     loss=CategoricalCrossEntropy(),
     optimizer=Adam(learning_rate=0.001)
 )
 
-# 3. Train (Auto-Validation Split)
-model.train(X_train, y_train, epochs=10, batch_size=32, auto_evaluation=0.2)
+# 4. Train (Auto-Validation Split)
+model.train(X, y, epochs=5, batch_size=64, auto_evaluation=0.2)
 ```
 
 [**👉 See full tutorials in the User Guide**](https://maximepires4.github.io/mp-neural-network/USER_GUIDE)

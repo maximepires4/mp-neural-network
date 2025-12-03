@@ -40,7 +40,9 @@ MPNN supports NVIDIA GPUs via **CuPy**. This provides massive speedups for large
 
 * NVIDIA GPU
 * CUDA Toolkit installed
-* `cupy` python package installed (`pip install cupy-cuda11x` or similar)
+* `cupy` python package installed matching your CUDA version (e.g., `pip install cupy-cuda12x`)
+
+> **Note:** Check your CUDA version with `nvcc --version` and install the corresponding package listed in the [CuPy Installation Guide](https://docs.cupy.dev/en/stable/install.html).
 
 ### Enabling GPU Mode
 
@@ -97,7 +99,10 @@ snakeviz output/benchmark_.../cpu_profile.prof
 Convolutional layers use `im2col` to vectorize operations. This expands the input image into a large matrix.
 
 * **Impact:** Memory usage grows by factor of $K^2$ (Kernel Size squared).
-* **Mitigation:** If you run out of memory, try reducing the `batch_size` or using smaller kernels (e.g., 3x3 instead of 5x5).
+* **Mitigation:**
+    * Reduce the `batch_size`.
+    * Use smaller kernels (e.g., 3x3 instead of 5x5).
+    * **Use Strides:** Increasing `stride` (e.g., `stride=2`) drastically reduces the output spatial dimensions and the size of the intermediate `im2col` matrix, saving both memory and compute.
 
 ### Data Copying
 

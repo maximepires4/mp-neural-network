@@ -24,7 +24,31 @@ pip install -e .
 
 ---
 
-## 2. Core Concepts
+## 2. Hardware Acceleration (GPU)
+
+MPNeuralNetwork supports GPU acceleration using **CuPy**.
+
+### Requirements
+
+* NVIDIA GPU
+* CUDA Toolkit installed
+* `cupy` installed (`pip install cupy-cuda12x` depending on your CUDA version)
+
+### Usage
+
+To enable GPU mode, simply set the `MPNN_BACKEND` environment variable before running your script:
+
+```bash
+# Linux / macOS
+export MPNN_BACKEND=cupy
+python my_script.py
+```
+
+If CuPy is not found or the variable is not set, it falls back to NumPy (CPU).
+
+---
+
+## 3. Core Concepts
 
 MPNeuralNetwork exposes some of the mathematical machinery while keeping the API clean.
 
@@ -148,11 +172,20 @@ from mpneuralnetwork.layers import Convolutional, Flatten, MaxPooling2D, BatchNo
 
 cnn_network = [
     # Conv1: 1 input channel -> 32 filters of size 3x3
-    Convolutional(output_depth=32, kernel_size=3, input_shape=(1, 28, 28)),
+    # stride=1 and padding=1 preserves spatial dimensions (28x28)
+    Convolutional(output_depth=32, kernel_size=3, input_shape=(1, 28, 28), stride=1, padding=1),
     BatchNormalization2D(),
     ReLU(),
 
-    # Pool1: Downsample by 2
+    # Pool1: Downsample by 2 (14x14)
+    MaxPooling2D(pool_size=2, strides=2),
+
+    # Conv2: 32 input channels -> 64 filters
+    Convolutional(output_depth=64, kernel_size=3, stride=1, padding=1),
+    BatchNormalization2D(),
+    ReLU(),
+
+    # Pool2: Downsample by 2 (7x7)
     MaxPooling2D(pool_size=2, strides=2),
 
     # Flatten: Convert 3D feature maps to 1D vector

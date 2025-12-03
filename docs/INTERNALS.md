@@ -77,7 +77,29 @@ The model monitors the validation loss at every epoch.
 
 ---
 
-## 4. Backend Optimizations
+## 4. Backend Abstraction (CPU/GPU)
+
+To support both CPU and GPU execution without code duplication, MPNeuralNetwork implements a unified backend interface.
+
+### The `xp` Abstraction
+
+The library defines a global `xp` module alias that points to either:
+
+* `numpy` (for CPU execution)
+* `cupy` (for NVIDIA GPU execution)
+
+All tensor operations (creation, math, reshaping) use `xp.array`, `xp.dot`, etc., instead of hardcoded `np.*` calls.
+
+### Device Transfers
+
+The `model` and `data` must reside on the same device.
+
+* `to_device(array)`: Moves a NumPy array to the configured device (GPU if enabled).
+* `to_host(array)`: Moves a device array back to CPU (NumPy) for printing or saving.
+
+---
+
+## 5. Backend Optimizations
 
 ### Vectorization & `im2col`
 
