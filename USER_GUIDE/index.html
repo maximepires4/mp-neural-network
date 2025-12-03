@@ -1,0 +1,1519 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://maximepires4.github.io/mp-neural-network/USER_GUIDE/">
+      
+      
+        <link rel="prev" href="..">
+      
+      
+        <link rel="next" href="../INTERNALS/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.0">
+    
+    
+      
+        <title>User Guide - MPNeuralNetwork</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.618322db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#user-guide-getting-started" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="MPNeuralNetwork" class="md-header__button md-logo" aria-label="MPNeuralNetwork" data-md-component="logo">
+      
+  <img src="../assets/logo.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            MPNeuralNetwork
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              User Guide
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/maximepires4/mp-neural-network" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="MPNeuralNetwork" class="md-nav__button md-logo" aria-label="MPNeuralNetwork" data-md-component="logo">
+      
+  <img src="../assets/logo.svg" alt="logo">
+
+    </a>
+    MPNeuralNetwork
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/maximepires4/mp-neural-network" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Installation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Installation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#from-pypi-stable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        From PyPI (Stable)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#from-source-development" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        From Source (Development)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-hardware-acceleration-gpu" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Hardware Acceleration (GPU)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Hardware Acceleration (GPU)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Requirements
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-core-concepts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Core Concepts
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Core Concepts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-model-container" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Model Container
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#data-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data Format
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-tutorial-1-your-first-neural-network-mnist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Tutorial 1: Your First Neural Network (MNIST)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Tutorial 1: Your First Neural Network (MNIST)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-1-prepare-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1: Prepare Data
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-define-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2: Define Architecture
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-train" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3: Train
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-evaluate-predict" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4: Evaluate &amp; Predict
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-tutorial-2-convolutional-neural-network-cnn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Tutorial 2: Convolutional Neural Network (CNN)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Tutorial 2: Convolutional Neural Network (CNN)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#defining-the-cnn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Defining the CNN
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-saving-and-loading" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Saving and Loading
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Next Steps
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../INTERNALS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture & Internals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../OPTIMIZATION_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optimization Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../QUALITY_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quality Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/layers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Layers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/activations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Activations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/losses/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Losses
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/optimizers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optimizers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/serialization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Serialization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/backend/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Backend
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Installation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Installation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#from-pypi-stable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        From PyPI (Stable)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#from-source-development" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        From Source (Development)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-hardware-acceleration-gpu" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Hardware Acceleration (GPU)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Hardware Acceleration (GPU)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Requirements
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-core-concepts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Core Concepts
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Core Concepts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-model-container" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Model Container
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#data-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data Format
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-tutorial-1-your-first-neural-network-mnist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Tutorial 1: Your First Neural Network (MNIST)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Tutorial 1: Your First Neural Network (MNIST)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-1-prepare-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1: Prepare Data
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-define-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2: Define Architecture
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-train" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3: Train
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-evaluate-predict" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4: Evaluate &amp; Predict
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-tutorial-2-convolutional-neural-network-cnn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Tutorial 2: Convolutional Neural Network (CNN)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Tutorial 2: Convolutional Neural Network (CNN)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#defining-the-cnn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Defining the CNN
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-saving-and-loading" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Saving and Loading
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Next Steps
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="user-guide-getting-started">User Guide: Getting Started</h1>
+<p>This tutorial will walk you through the essential concepts of the framework, from installation to building your first Deep Learning models.</p>
+<hr />
+<h2 id="1-installation">1. Installation</h2>
+<p>First, ensure you have Python 3.10 or later installed.</p>
+<h3 id="from-pypi-stable">From PyPI (Stable)</h3>
+<pre><code class="language-bash">pip install mpneuralnetwork
+</code></pre>
+<h3 id="from-source-development">From Source (Development)</h3>
+<pre><code class="language-bash">git clone https://github.com/maximepires4/mp-neural-network.git
+cd mp-neural-network
+pip install -e .
+</code></pre>
+<hr />
+<h2 id="2-hardware-acceleration-gpu">2. Hardware Acceleration (GPU)</h2>
+<p>MPNeuralNetwork supports GPU acceleration using <strong>CuPy</strong>.</p>
+<h3 id="requirements">Requirements</h3>
+<ul>
+<li>NVIDIA GPU</li>
+<li>CUDA Toolkit installed</li>
+<li><code>cupy</code> installed (<code>pip install cupy-cuda12x</code> depending on your CUDA version)</li>
+</ul>
+<h3 id="usage">Usage</h3>
+<p>To enable GPU mode, simply set the <code>MPNN_BACKEND</code> environment variable before running your script:</p>
+<pre><code class="language-bash"># Linux / macOS
+export MPNN_BACKEND=cupy
+python my_script.py
+</code></pre>
+<p>If CuPy is not found or the variable is not set, it falls back to NumPy (CPU).</p>
+<hr />
+<h2 id="3-core-concepts">3. Core Concepts</h2>
+<p>MPNeuralNetwork exposes some of the mathematical machinery while keeping the API clean.</p>
+<h3 id="the-model-container">The <code>Model</code> Container</h3>
+<p>Everything revolves around the <code>Model</code> class. It manages:</p>
+<ol>
+<li><strong>Layers</strong>: The sequence of transformations (Dense, Conv2D, etc.).</li>
+<li><strong>Loss Function</strong>: How error is calculated (MSE, CrossEntropy).</li>
+<li><strong>Optimizer</strong>: How weights are updated (SGD, Adam).</li>
+</ol>
+<h3 id="data-format">Data Format</h3>
+<p>The framework uses <strong>NumPy arrays</strong> (or CuPy if on GPU).</p>
+<ul>
+<li><strong>Inputs (X):</strong> Must be float32 arrays of shape <code>(batch_size, features...)</code>.</li>
+<li><strong>Targets (y):</strong></li>
+<li><strong>Regression:</strong> <code>(batch_size, outputs)</code>.</li>
+<li><strong>Classification:</strong> One-hot encoded <code>(batch_size, num_classes)</code>.</li>
+</ul>
+<hr />
+<h2 id="3-tutorial-1-your-first-neural-network-mnist">3. Tutorial 1: Your First Neural Network (MNIST)</h2>
+<p>Let's build a classic Multi-Layer Perceptron (MLP) to classify handwritten digits from the MNIST dataset.</p>
+<h3 id="step-1-prepare-data">Step 1: Prepare Data</h3>
+<pre><code class="language-python">import numpy as np
+from sklearn.datasets import fetch_openml
+from sklearn.preprocessing import OneHotEncoder
+
+# 1. Load Data
+mnist = fetch_openml('mnist_784', version=1)
+X = mnist.data.to_numpy() / 255.0  # Normalize to [0, 1]
+y = mnist.target.to_numpy().reshape(-1, 1)
+
+# 2. One-Hot Encode Labels
+encoder = OneHotEncoder(sparse_output=False)
+y = encoder.fit_transform(y)
+
+# 3. Split Train/Test
+X_train, X_test = X[:60000], X[60000:]
+y_train, y_test = y[:60000], y[60000:]
+</code></pre>
+<h3 id="step-2-define-architecture">Step 2: Define Architecture</h3>
+<p>We will build a network with:</p>
+<ul>
+<li>Input: 784 features (28x28 pixels flattened)</li>
+<li>Hidden Layer 1: 128 neurons + ReLU + Dropout</li>
+<li>Output Layer: 10 neurons (digits 0-9)</li>
+</ul>
+<pre><code class="language-python">from mpneuralnetwork.layers import Dense, Dropout
+from mpneuralnetwork.activations import ReLU
+from mpneuralnetwork.losses import CategoricalCrossEntropy
+from mpneuralnetwork.optimizers import Adam
+from mpneuralnetwork.model import Model
+
+network = [
+    Dense(128, input_size=784),  # Weights auto-initialized (He Init)
+    ReLU(),
+    Dropout(0.2),                # 20% dropout during training
+    Dense(10)                    # Output logits (no Softmax here!)
+]
+
+model = Model(
+    layers=network,
+    loss=CategoricalCrossEntropy(),  # Handles Softmax internally
+    optimizer=Adam(learning_rate=0.001),
+    metrics=[] # Accuracy is auto-added
+)
+</code></pre>
+<h3 id="step-3-train">Step 3: Train</h3>
+<p>We use the <code>train()</code> method. Note the <code>auto_evaluation</code> parameter which automatically creates a validation set.</p>
+<pre><code class="language-python">model.train(
+    X_train, y_train,
+    epochs=20,
+    batch_size=64,
+    auto_evaluation=0.2,  # Use 20% of data for validation
+    early_stopping=3      # Stop if no improvement for 3 epochs
+)
+</code></pre>
+<h3 id="step-4-evaluate-predict">Step 4: Evaluate &amp; Predict</h3>
+<pre><code class="language-python"># Check performance on test set
+model.test(X_test, y_test)
+
+# Make predictions
+preds = model.predict(X_test[:5])
+print(&quot;Predicted probabilities:&quot;, preds)
+</code></pre>
+<hr />
+<h2 id="4-tutorial-2-convolutional-neural-network-cnn">4. Tutorial 2: Convolutional Neural Network (CNN)</h2>
+<p>For image data, CNNs are superior. MPNeuralNetwork supports 2D convolutions using the optimized <code>im2col</code> technique.</p>
+<p><strong>Note on Shapes:</strong> CNNs expect 4D input tensors: <code>(Batch, Channels, Height, Width)</code>.</p>
+<pre><code class="language-python"># Reshape flat MNIST data to 4D
+X_train_cnn = X_train.reshape(-1, 1, 28, 28)
+X_test_cnn = X_test.reshape(-1, 1, 28, 28)
+</code></pre>
+<h3 id="defining-the-cnn">Defining the CNN</h3>
+<pre><code class="language-python">from mpneuralnetwork.layers import Convolutional, Flatten, MaxPooling2D, BatchNormalization2D
+
+cnn_network = [
+    # Conv1: 1 input channel -&gt; 32 filters of size 3x3
+    # stride=1 and padding=1 preserves spatial dimensions (28x28)
+    Convolutional(output_depth=32, kernel_size=3, input_shape=(1, 28, 28), stride=1, padding=1),
+    BatchNormalization2D(),
+    ReLU(),
+
+    # Pool1: Downsample by 2 (14x14)
+    MaxPooling2D(pool_size=2, strides=2),
+
+    # Conv2: 32 input channels -&gt; 64 filters
+    Convolutional(output_depth=64, kernel_size=3, stride=1, padding=1),
+    BatchNormalization2D(),
+    ReLU(),
+
+    # Pool2: Downsample by 2 (7x7)
+    MaxPooling2D(pool_size=2, strides=2),
+
+    # Flatten: Convert 3D feature maps to 1D vector
+    Flatten(),
+
+    # Dense Classifier
+    Dense(100),
+    ReLU(),
+    Dense(10)
+]
+
+model_cnn = Model(
+    layers=cnn_network,
+    loss=CategoricalCrossEntropy(),
+    optimizer=Adam(learning_rate=0.001)
+)
+
+model_cnn.train(X_train_cnn, y_train, epochs=10, batch_size=32)
+</code></pre>
+<hr />
+<h2 id="5-saving-and-loading">5. Saving and Loading</h2>
+<p>You can save your trained model to disk to use it later without retraining.</p>
+<pre><code class="language-python">from mpneuralnetwork.serialization import save_model, load_model
+
+# Save full model (architecture + weights + optimizer state)
+save_model(model, &quot;my_mnist_model.npz&quot;)
+
+# Load it back
+loaded_model = load_model(&quot;my_mnist_model.npz&quot;)
+
+# Resume training or predict immediately
+loaded_model.predict(X_test[:1])
+</code></pre>
+<hr />
+<h2 id="6-next-steps">6. Next Steps</h2>
+<ul>
+<li>Learn about performance tuning in the <a href="../OPTIMIZATION_GUIDE/">Optimization Guide</a>.</li>
+<li>Explore the full <a href="../reference/model/">API Reference</a>.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "content.code.copy", "navigation.top", "toc.follow"], "search": "../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.e71a0d61.min.js"></script>
+      
+    
+  </body>
+</html>
