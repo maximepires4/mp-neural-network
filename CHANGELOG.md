@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v1.1.1 (2025-12-03)
+
+### Bug Fixes
+
+- Fixed outdated documentation
+  ([`2eb10d4`](https://github.com/maximepires4/mp-neural-network/commit/2eb10d42acc377bb0c09cff383eaa1ab307d088d))
+
+
 ## v1.1.0 (2025-12-02)
 
 ### Features
