@@ -2,6 +2,8 @@
 
 This roadmap outlines the planned improvements and features for `mp-neural-network`.
 
+> **Note:** This roadmap is being progressively migrated to our [GitHub Project](https://github.com/users/maximepires4/projects/7/). Please refer to the project board for the most up-to-date planning and status.
+
 ## Upcoming Features
 
 - **RNN/LSTM Layers:** Support for sequential data.

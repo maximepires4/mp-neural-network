@@ -114,7 +114,7 @@ The framework enforces **Float32** precision globally to halve memory usage and 
 
 ## **Roadmap**
 
-[**👉 View the full Roadmap**](https://maximepires4.github.io/mp-neural-network/ROADMAP)
+The roadmap has been moved to our [GitHub Project](https://github.com/users/maximepires4/projects/7/) board.
 
 ## **Author**
 

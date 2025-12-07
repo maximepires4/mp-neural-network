@@ -38,4 +38,46 @@
 
 ## v1.0.0 (2025-11-28)
 
-- Initial Release
+### Features
+
+- **Layers:**
+    - `Dense` (fully connected) with `no_bias` support.
+    - `Convolutional` (Conv2D) using `im2col` for efficiency.
+    - `MaxPooling2D` and `AveragePooling2D`.
+    - `BatchNormalization` (supports both 1D Dense and 2D Spatial/CNN).
+    - `Dropout` for regularization.
+    - `Flatten`.
+- **Optimizers:**
+    - `SGD` (with Momentum).
+    - `RMSprop`.
+    - `Adam` (with decoupled weight decay support).
+    - **Regularization:** L1 and L2 weight decay integrated into all optimizers.
+- **Activations:** `ReLU`, `Sigmoid`, `Tanh`, `Softmax`, `PReLU`, `Swish`.
+- **Losses & Metrics:**
+    - `MSE` (Mean Squared Error).
+    - `BinaryCrossEntropy`.
+    - `CategoricalCrossEntropy` (with numerical stability fixes for logits).
+    - Standalone metrics system including `Accuracy`, `Precision`, `Recall`, `F1Score`, `RMSE`, `MAE`, `R2Score`.
+- **Training Engine:**
+    - **Early Stopping:** Monitors validation loss to stop training when improvement stalls.
+    - **Model Checkpoint:** Automatically saves the best model weights.
+    - **Auto-Validation:** Automatic splitting of training data for validation.
+    - **Smart Defaults:** Automatic weight initialization (He/Xavier) and shape inference (no need to specify input shapes for every layer).
+- **Serialization:** Complete `save_model` and `load_model` support (architecture + weights) using `.json` and compressed `.npz`.
+
+### Performance
+
+- **Vectorization:** Full batch vectorization for all layers and backpropagation.
+- **Float32:** Enforced global `np.float32` dtype (vs default float64), reducing RAM usage by ~50% and speeding up operations by ~20%.
+- **In-Place Operations:** optimized training and evaluation loops to eliminate redundant array copies (~13% speedup).
+- **Optimized Shuffling:** Shuffling indices instead of physical arrays during training.
+- **Lazy Metrics:** Metrics are computed only when necessary to reduce overhead.
+
+### Infrastructure
+
+- **Quality:**
+    - Full static typing with `mypy`.
+    - Linting and formatting with `ruff`.
+    - CI/CD pipelines (GitHub Actions) for tests and publishing.
+- **Benchmarking:** Dedicated scripts for performance profiling and regression testing.
+- **Documentation:** Comprehensive README with examples (MNIST, Regression, CNN).
