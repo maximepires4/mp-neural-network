@@ -233,11 +233,13 @@ class Adam(Optimizer):
         beta1: float = 0.9,
         beta2: float = 0.999,
         epsilon: float = 1e-8,
+        no_bias_correction: bool = False,
     ) -> None:
         super().__init__(learning_rate, regularization, weight_decay)
         self.beta1: float = beta1
         self.beta2: float = beta2
         self.epsilon: float = epsilon
+        self.no_bias_correction: bool = no_bias_correction
 
         self.t: int = 0
         self.momentums: T = {}
@@ -280,8 +282,12 @@ class Adam(Optimizer):
                 # m_hat = m / (1 - beta1^t)
                 # v_hat = v / (1 - beta2^t)
 
-                bias_correction1 = 1 - self.beta1**self.t
-                bias_correction2 = 1 - self.beta2**self.t
+                if not self.no_bias_correction:
+                    bias_correction1 = 1 - self.beta1**self.t
+                    bias_correction2 = 1 - self.beta2**self.t
+                else:
+                    bias_correction1 = 1
+                    bias_correction2 = 1
 
                 # Efficient Update Formula:
                 # w -= lr * m_hat / (sqrt(v_hat) + epsilon)
@@ -310,6 +316,7 @@ class Adam(Optimizer):
                 "beta1": self.beta1,
                 "beta2": self.beta2,
                 "epsilon": self.epsilon,
+                "no_bias_correction": self.no_bias_correction,
             }
         )
         return config
