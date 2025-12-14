@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v1.2.0-beta.1 (2025-12-14)
+
+### Features
+
+- Add an option to disable bias correction on Adam
+  ([`a4bc8e9`](https://github.com/maximepires4/mp-neural-network/commit/a4bc8e9eb357b856e39cefa8dd7af477963b0184))
+
+
 ## v1.1.1 (2025-12-03)
 
 ### Bug Fixes
